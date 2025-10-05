@@ -1,9 +1,10 @@
 package com.hampcoders.glottia.platform.api.profiles.infrastructure.persistence.jpa.repository;
 
 import com.hampcoders.glottia.platform.api.profiles.domain.model.aggregates.Profile;
-import com.hampcoders.glottia.platform.api.profiles.domain.model.valueobjects.Languages;
-import com.hampcoders.glottia.platform.api.profiles.domain.model.valueobjects.NivelCefr;
+import com.hampcoders.glottia.platform.api.profiles.domain.model.entities.BusinessRole;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -11,10 +12,17 @@ import java.util.Optional;
 
 @Repository
 public interface ProfileRepository extends JpaRepository<Profile, Long> {
-    boolean existsByFullName(String fullName);
-    boolean existsByFullNameAndIdIsNot(String fullName, Long id);
-    Optional<Profile> findByFullName(String fullName);
-    List<Profile> findByLevel(NivelCefr level);
-    List<Profile> findByLanguage(Languages language);
+    @Query("SELECT COUNT(p) > 0 FROM Profile p WHERE CONCAT(p.firstName, ' ', p.lastName) = :fullName")
+    boolean existsByFullName(@Param("fullName") String fullName);
+    
+    @Query("SELECT COUNT(p) > 0 FROM Profile p WHERE CONCAT(p.firstName, ' ', p.lastName) = :fullName AND p.id != :id")
+    boolean existsByFullNameAndIdIsNot(@Param("fullName") String fullName, @Param("id") Long id);
+    
+    // Add @Query annotation for this method too!
+    @Query("SELECT p FROM Profile p WHERE CONCAT(p.firstName, ' ', p.lastName) = :fullName")
+    Optional<Profile> findByFullName(@Param("fullName") String fullName);
+    
+    Optional<Profile> findByEmail(String email);
     List<Profile> findByAge(int age);
+    List<Profile> findByBusinessRolesContaining(BusinessRole businessRole);
 }

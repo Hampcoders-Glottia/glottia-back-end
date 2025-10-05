@@ -1,11 +1,14 @@
 package com.hampcoders.glottia.platform.api.profiles.domain.model.commands;
 
+import java.util.List;
+
+import com.hampcoders.glottia.platform.api.profiles.domain.model.entities.BusinessRole;
+
 public record CreateProfileCommand(
-        String name,
+        String firstName,
+        String lastName,
         int age,
         String email,
-        String language,
-        String level,
-        String country
+        List<BusinessRole> businessRoles
 ) {
 }

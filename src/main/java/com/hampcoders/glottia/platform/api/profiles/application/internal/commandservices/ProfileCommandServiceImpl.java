@@ -21,9 +21,9 @@ public class ProfileCommandServiceImpl implements ProfileCommandService {
 
     @Override
     public Long handle(CreateProfileCommand command) {
-        var name = command.name();
-        if (this.profileRepository.existsByFullName(name)) {
-            throw new IllegalArgumentException("Profile with full name " + name + " already exists");
+        var fullName = command.firstName() + " " + command.lastName();
+        if (this.profileRepository.existsByFullName(fullName)) {
+            throw new IllegalArgumentException("Profile with full name " + fullName + " already exists");
         }
         var profile = new Profile(command);
         try {
@@ -37,9 +37,9 @@ public class ProfileCommandServiceImpl implements ProfileCommandService {
     @Override
     public Optional<Profile> handle(UpdateProfileCommand command) {
         var profileId = command.profileId();
-        var name = command.name();
-        if (this.profileRepository.existsByFullNameAndIdIsNot(name, profileId)) {
-            throw new IllegalArgumentException("Profile with full name " + name + " already exists");
+        var fullName = command.firstName() + " " + command.lastName();
+        if (this.profileRepository.existsByFullNameAndIdIsNot(fullName, profileId)) {
+            throw new IllegalArgumentException("Profile with full name " + fullName + " already exists");
         }
 
         // If the profile does not exist, throw an exception
@@ -48,14 +48,7 @@ public class ProfileCommandServiceImpl implements ProfileCommandService {
         }
 
         var profileToUpdate = this.profileRepository.findById(profileId).get();
-        profileToUpdate.updateInformation(
-                command.name(),
-                command.age(),
-                command.email(),
-                command.language(),
-                command.level(),
-                command.country()
-        );
+        profileToUpdate.updateInformation(command);
 
         try {
             var updatedProfile = this.profileRepository.save(profileToUpdate);

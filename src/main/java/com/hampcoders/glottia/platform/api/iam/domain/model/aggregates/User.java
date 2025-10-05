@@ -6,11 +6,6 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import lombok.*;
 
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
-
-
 /**
  * User aggregate root
  * This class represents the aggregate root for the User entity.

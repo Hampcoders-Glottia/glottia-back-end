@@ -2,11 +2,9 @@ package com.hampcoders.glottia.platform.api.profiles.domain.model.commands;
 
 public record UpdateProfileCommand(
         Long profileId,
-        String name,
+        String firstName,
+        String lastName,
         int age,
-        String email,
-        String language,
-        String level,
-        String country
+        String email
 ) {
 }

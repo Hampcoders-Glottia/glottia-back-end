@@ -7,7 +7,6 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -62,18 +61,6 @@ public class WebSecurityConfiguration {
     }
 
     /**
-     * This method creates the authentication provider.
-     * @return The authentication provider
-     */
-    @Bean
-    public DaoAuthenticationProvider authenticationProvider() {
-        var authenticationProvider = new DaoAuthenticationProvider();
-        authenticationProvider.setUserDetailsService(userDetailsService);
-        authenticationProvider.setPasswordEncoder(hashingService);
-        return authenticationProvider;
-    }
-
-    /**
      * This method creates the password encoder.
      * @return The password encoder
      */
@@ -107,8 +94,8 @@ public class WebSecurityConfiguration {
                                         "/swagger-ui/**", "/swagger-resources/**", "/webjars/**")
                                 .permitAll()
                                 .anyRequest()
-                                .authenticated());
-        http.authenticationProvider(authenticationProvider());
+                                .authenticated())
+                .userDetailsService(userDetailsService);
         http.addFilterBefore(authorizationRequestFilter(), UsernamePasswordAuthenticationFilter.class);
         return http.build();
     }

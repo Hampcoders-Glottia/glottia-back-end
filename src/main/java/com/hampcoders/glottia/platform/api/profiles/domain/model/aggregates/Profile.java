@@ -1,9 +1,11 @@
 package com.hampcoders.glottia.platform.api.profiles.domain.model.aggregates;
 
+import java.util.HashSet;
+import java.util.Set;
+
 import com.hampcoders.glottia.platform.api.profiles.domain.model.commands.CreateProfileCommand;
-import com.hampcoders.glottia.platform.api.profiles.domain.model.valueobjects.StreetAddress;
-import com.hampcoders.glottia.platform.api.profiles.domain.model.valueobjects.Languages;
-import com.hampcoders.glottia.platform.api.profiles.domain.model.valueobjects.NivelCefr;
+import com.hampcoders.glottia.platform.api.profiles.domain.model.commands.UpdateProfileCommand;
+import com.hampcoders.glottia.platform.api.profiles.domain.model.entities.BusinessRole;
 import com.hampcoders.glottia.platform.api.shared.domain.model.aggregates.AuditableAbstractAggregateRoot;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.Max;
@@ -14,16 +16,24 @@ import jakarta.validation.constraints.Email;
 import lombok.Getter;
 
 @Entity
+@Getter
 @Table(name = "profiles")
 public class Profile extends AuditableAbstractAggregateRoot<Profile> {
 
-    @Getter
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
     @NotNull
     @NotBlank
-    @Column(name = "full_name", length = 50, nullable = false)
-    private String fullName;
+    @Column(name = "first_name", length = 50, nullable = false)
+    private String firstName;
 
-    @Getter
+    @NotNull
+    @NotBlank
+    @Column(name = "last_name", length = 50, nullable = false)
+    private String lastName;
+
     @Min(0)
     @Max(100)
     @Column(name = "age", columnDefinition = "smallint", nullable = false)
@@ -35,71 +45,148 @@ public class Profile extends AuditableAbstractAggregateRoot<Profile> {
     @Column(name = "email", length = 100, nullable = false, unique = true)
     private String email;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "language", length = 20, nullable = false)
-    private Languages language;
+    @ManyToMany(fetch = FetchType.EAGER, cascade = CascadeType.ALL)
+    @JoinTable(
+            name = "profiles_business_roles",
+            joinColumns = @JoinColumn(name = "profile_id"),
+            inverseJoinColumns = @JoinColumn(name = "business_role_id")
+    )
+    private Set<BusinessRole> businessRoles;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "level", length = 10, nullable = false)
-    private NivelCefr level;
+    // Profile can be either a Learner or a Partner, but not both
+    // Using nullable foreign keys - only one should be populated
+    @OneToOne(cascade = CascadeType.ALL, orphanRemoval = true)
+    @JoinColumn(name = "learner_id")
+    private Learner learner;
 
-    @Embedded
-    @AttributeOverrides( {
-            @AttributeOverride(name = "street", column = @Column(name = "address_street", length = 100, nullable = false))
-    })
-    private StreetAddress address;
+    @OneToOne(cascade = CascadeType.ALL, orphanRemoval = true)
+    @JoinColumn(name = "partner_id")
+    private Partner partner;
 
-    // ---------------------------------------------------
-    public Profile(String fullName, int age, String email, Languages language, NivelCefr level, String country) {
-        this.fullName = fullName;
+    // --- Constructors ---
+
+    public Profile() {
+        this.businessRoles = new HashSet<>();
+    }
+
+    public Profile(String firstName, String lastName, int age, String email) {
+        this();
+        this.firstName = firstName;
+        this.lastName = lastName;
         this.age = age;
         this.email = email;
-        this.language = language;
-        this.level = level;
-        this.address = new StreetAddress(country);
     }
 
-    public Profile() {}
-
-    public void updateStreetAddress(String country) {
-        this.address = new StreetAddress(country);
-    }
-
-    public String getAddress() { return address.street(); }
-
-    public String getCountry() { return address.street(); }
-
-    public String getEmail() { return email; }
-
-    public String getLanguage() { return language.name(); }
-
-    public String getLevel() { return level.name(); }
-
-    // ---------------------------------------------------
     public Profile(CreateProfileCommand command) {
-        this.fullName = command.name();
+        this();
+        this.firstName = command.firstName();
+        this.lastName = command.lastName();
         this.age = command.age();
         this.email = command.email();
-        this.language = parseLanguage(command.language());
-        this.level = parseLevel(command.level());
-        this.address = new StreetAddress(command.country());
+        if (command.businessRoles() != null) {
+            this.businessRoles.addAll(command.businessRoles());
+        }
     }
 
-    public Profile updateInformation(String fullName, int age, String email, String language, String level, String country) {
-        this.fullName = fullName;
-        this.age = age;
-        this.email = email;
-        this.language = parseLanguage(language);
-        this.level = parseLevel(level);
-        this.address = new StreetAddress(country);
-        return this;
+    // --- Role assignment ---
+
+    /**
+     * Assigns this profile as a Learner
+     * Business rule: Profile can only be one type at a time
+     */
+    public void assignAsLearner(Learner learner) {
+        if (this.partner != null) {
+            throw new IllegalStateException("Cannot assign Learner. Profile is already assigned as Partner.");
+        }
+        this.learner = learner;
     }
 
-    private Languages parseLanguage(String value) {
-        return Languages.valueOf(value.toUpperCase());
+    /**
+     * Assigns this profile as a Partner  
+     * Business rule: Profile can only be one type at a time
+     */
+    public void assignAsPartner(Partner partner) {
+        if (this.learner != null) {
+            throw new IllegalStateException("Cannot assign Partner. Profile is already assigned as Learner.");
+        }
+        this.partner = partner;
     }
 
-    private NivelCefr parseLevel(String value) {
-        return NivelCefr.valueOf(value.toUpperCase());
+    // --- Updates ---
+
+    public void updateInformation(UpdateProfileCommand command) {
+        this.firstName = command.firstName();
+        this.lastName = command.lastName();
+        this.age = command.age();
+        this.email = command.email();
     }
+
+    public void addBusinessRole(BusinessRole businessRole) {
+        this.businessRoles.add(businessRole);
+    }
+
+    public void removeBusinessRole(BusinessRole businessRole) {
+        this.businessRoles.remove(businessRole);
+    }
+
+    // --- Type checking methods ---
+
+    /**
+     * Checks if profile is assigned as learner
+     */
+    public boolean isLearner() {
+        return this.learner != null;
+    }
+
+    /**
+     * Checks if profile is assigned as partner
+     */
+    public boolean isPartner() {
+        return this.partner != null;
+    }
+
+    /**
+     * Checks if profile has no type assignment yet
+     */
+    public boolean isUnassigned() {
+        return this.learner == null && this.partner == null;
+    }
+
+    // --- Utility methods ---
+
+    public String getFullName() {
+        return this.firstName + " " + this.lastName;
+    }
+
+    /**
+     * Gets the primary language from learner's languages (if learner), otherwise null
+     */
+    public String getLanguage() {
+        if (this.learner != null && !this.learner.getLanguages().isEmpty()) {
+            return this.learner.getLanguages().get(0).getLanguage().getStringLanguageName();
+        }
+        return null;
+    }
+
+    /**
+     * Gets the primary level from learner's languages (if learner), otherwise null
+     */
+    public String getLevel() {
+        if (this.learner != null && !this.learner.getLanguages().isEmpty()) {
+            return this.learner.getLanguages().get(0).getCefrLevel().getStringCefrLevelName();
+        }
+        return null;
+    }
+
+    /**
+     * Gets the country from learner's address if learner, otherwise null
+     * Partners don't manage addresses as they represent business relationships
+     */
+    public String getCountry() {
+        if (this.learner != null && this.learner.getAddress() != null) {
+            return this.learner.getAddress().country();
+        }
+        return null;
+    }
+
 }

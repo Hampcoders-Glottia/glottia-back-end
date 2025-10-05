@@ -7,6 +7,9 @@ import com.hampcoders.glottia.platform.api.profiles.domain.model.commands.Update
 
 import java.util.Optional;
 
+/**
+ * Service interface for Profile aggregate operations
+ */
 public interface ProfileCommandService {
     Long handle(CreateProfileCommand command);
     Optional<Profile> handle(UpdateProfileCommand command);

@@ -1,11 +1,13 @@
 package com.hampcoders.glottia.platform.api.profiles.interfaces.rest.resources;
 
+/**
+ * Resource for creating a new profile
+ */
 public record CreateProfileResource(
-    String name,
+    String firstName,
+    String lastName,
     int age,
     String email,
-    String language,
-    String level,
-    String country
+    Long businessRoleId // Single business role ID
 ) {
 }

@@ -1,122 +1,212 @@
 package com.hampcoders.glottia.platform.api.profiles.interfaces.rest;
 
-import com.hampcoders.glottia.platform.api.profiles.domain.model.commands.DeleteProfileCommand;
-import com.hampcoders.glottia.platform.api.profiles.domain.model.queries.*;
-import com.hampcoders.glottia.platform.api.profiles.domain.model.valueobjects.Languages;
-import com.hampcoders.glottia.platform.api.profiles.domain.model.valueobjects.NivelCefr;
-import com.hampcoders.glottia.platform.api.profiles.domain.services.ProfileCommandService;
-import com.hampcoders.glottia.platform.api.profiles.domain.services.ProfileQueryService;
-import com.hampcoders.glottia.platform.api.profiles.interfaces.rest.resources.CreateProfileResource;
-import com.hampcoders.glottia.platform.api.profiles.interfaces.rest.resources.ProfileResource;
-import com.hampcoders.glottia.platform.api.profiles.interfaces.rest.resources.UpdateProfileResource;
-import com.hampcoders.glottia.platform.api.profiles.interfaces.rest.transform.CreateProfileCommandFromResourceAssembler;
-import com.hampcoders.glottia.platform.api.profiles.interfaces.rest.transform.ProfileResourceFromEntityAssembler;
-import com.hampcoders.glottia.platform.api.profiles.interfaces.rest.transform.UpdateProfileCommandFromResourceAssembler;
-
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
-
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-
 import org.springframework.web.bind.annotation.*;
 
-import java.net.URI;
-import java.util.List;
-import java.util.stream.Collectors;
+import com.hampcoders.glottia.platform.api.profiles.domain.model.commands.DeleteProfileCommand;
+import com.hampcoders.glottia.platform.api.profiles.domain.model.queries.*;
+import com.hampcoders.glottia.platform.api.profiles.domain.model.valueobjects.BusinessRoles;
+import com.hampcoders.glottia.platform.api.profiles.domain.services.BusinessRoleQueryService;
+import com.hampcoders.glottia.platform.api.profiles.domain.services.ProfileCommandService;
+import com.hampcoders.glottia.platform.api.profiles.domain.services.ProfileQueryService;
+import com.hampcoders.glottia.platform.api.profiles.interfaces.rest.resources.*;
+import com.hampcoders.glottia.platform.api.profiles.interfaces.rest.transform.*;
 
-@CrossOrigin(origins = "*", methods = { RequestMethod.POST, RequestMethod.GET, RequestMethod.PUT, RequestMethod.DELETE })
+import java.util.List;
+
+/**
+ * Profiles Controller
+ * Handles REST endpoints for Profile aggregate operations
+ */
 @RestController
 @RequestMapping(value = "/api/v1/profiles", produces = MediaType.APPLICATION_JSON_VALUE)
 @Tag(name = "Profiles", description = "Profile Management Endpoints")
 public class ProfilesController {
 
-    private final ProfileQueryService profileQueryService;
     private final ProfileCommandService profileCommandService;
+    private final ProfileQueryService profileQueryService;
+    private final BusinessRoleQueryService businessRoleQueryService;
 
-    public ProfilesController(ProfileQueryService profileQueryService, ProfileCommandService profileCommandService) {
-        this.profileQueryService = profileQueryService;
+    public ProfilesController(ProfileCommandService profileCommandService,
+                             ProfileQueryService profileQueryService,
+                             BusinessRoleQueryService businessRoleQueryService) {
         this.profileCommandService = profileCommandService;
+        this.profileQueryService = profileQueryService;
+        this.businessRoleQueryService = businessRoleQueryService;
     }
 
-    @Operation(summary = "Create a new profile")
-    @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<?> createProfile(@RequestBody CreateProfileResource resource) {
-        try {
-            var createProfileCommand = CreateProfileCommandFromResourceAssembler.toCommandFromResource(resource);
-            var profileId = this.profileCommandService.handle(createProfileCommand);
-            var optionalProfile = this.profileQueryService.handle(new GetProfileByIdQuery(profileId));
-            if (optionalProfile.isEmpty()) return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Created but not found");
-            var profileResource = ProfileResourceFromEntityAssembler.toResourceFromEntity(optionalProfile.get());
-            var location = URI.create("/api/v1/profiles/" + profileId);
-            return ResponseEntity.created(location).body(profileResource);
-        } catch (IllegalArgumentException ex) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ex.getMessage());
+    /**
+     * Create a new profile
+     */
+    @PostMapping
+    @Operation(summary = "Create a new profile", description = "Creates a new profile with the provided information")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "201", description = "Profile created successfully",
+                content = @Content(mediaType = "application/json", schema = @Schema(implementation = ProfileResource.class))),
+        @ApiResponse(responseCode = "400", description = "Invalid input data"),
+        @ApiResponse(responseCode = "409", description = "Profile with email already exists")
+    })
+    public ResponseEntity<ProfileResource> createProfile(@RequestBody CreateProfileResource resource) {
+        var command = CreateProfileCommandFromResourceAssembler.toCommandFromResource(resource);
+        var profileId = profileCommandService.handle(command);
+        
+        if (profileId == null || profileId == 0) {
+            return ResponseEntity.badRequest().build();
         }
+
+        var profile = profileQueryService.handle(new GetProfileByIdQuery(profileId));
+        if (profile.isEmpty()) {
+            return ResponseEntity.badRequest().build();
+        }
+
+        var profileResource = ProfileResourceFromEntityAssembler.toResourceFromEntity(profile.get());
+        return new ResponseEntity<>(profileResource, HttpStatus.CREATED);
     }
 
-    @Operation(summary = "List profiles with optional filters: age, language, level (all combined with AND)")
+    /**
+     * Get all profiles
+     */
     @GetMapping
-    public ResponseEntity<List<ProfileResource>> getAllProfiles(@RequestParam(required = false) Integer age,
-                                                                @RequestParam(required = false) String language,
-                                                                @RequestParam(required = false) String level) {
-        var profiles = this.profileQueryService.handle(new GetAllProfilesQuery());
-
-        if (age != null) {
-            profiles = profiles.stream().filter(p -> p.getAge() == age).collect(Collectors.toList());
-        }
-        if (language != null) {
-            Languages langEnum;
-            try { langEnum = Languages.valueOf(language.toUpperCase()); }
-            catch (IllegalArgumentException e) { return ResponseEntity.badRequest().build(); }
-            var finalLangEnum = langEnum;
-            profiles = profiles.stream().filter(p -> p.getLanguage().equalsIgnoreCase(finalLangEnum.name())).collect(Collectors.toList());
-        }
-        if (level != null) {
-            NivelCefr lvlEnum;
-            try { lvlEnum = NivelCefr.valueOf(level.toUpperCase()); }
-            catch (IllegalArgumentException e) { return ResponseEntity.badRequest().build(); }
-            var finalLvlEnum = lvlEnum;
-            profiles = profiles.stream().filter(p -> p.getLevel().equalsIgnoreCase(finalLvlEnum.name())).collect(Collectors.toList());
-        }
-
-        var resources = ProfileResourceFromEntityAssembler.toResourceListFromEntities(profiles);
-        return ResponseEntity.ok(resources);
+    @Operation(summary = "Get all profiles", description = "Retrieves all profiles in the system")
+    @ApiResponse(responseCode = "200", description = "Profiles retrieved successfully")
+    public ResponseEntity<List<ProfileResource>> getAllProfiles() {
+        var profiles = profileQueryService.handle(new GetAllProfilesQuery());
+        var profileResources = profiles.stream()
+                .map(ProfileResourceFromEntityAssembler::toResourceFromEntity)
+                .toList();
+        return ResponseEntity.ok(profileResources);
     }
 
-    @Operation(summary = "Get profile by id")
-    @GetMapping("/{profileId}")
-    public ResponseEntity<?> getProfileById(@PathVariable Long profileId) {
-        var optionalProfile = this.profileQueryService.handle(new GetProfileByIdQuery(profileId));
-        if (optionalProfile.isEmpty())
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Profile not found");
-        var profileResource = ProfileResourceFromEntityAssembler.toResourceFromEntity(optionalProfile.get());
+    /**
+     * Get profile by ID
+     */
+    @GetMapping("/{id}")
+    @Operation(summary = "Get profile by ID", description = "Retrieves a specific profile by its ID")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Profile found"),
+        @ApiResponse(responseCode = "404", description = "Profile not found")
+    })
+    public ResponseEntity<ProfileResource> getProfileById(
+            @Parameter(description = "Profile ID") @PathVariable Long id) {
+        var profile = profileQueryService.handle(new GetProfileByIdQuery(id));
+        
+        if (profile.isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+
+        var profileResource = ProfileResourceFromEntityAssembler.toResourceFromEntity(profile.get());
         return ResponseEntity.ok(profileResource);
     }
 
-    @Operation(summary = "Update an existing profile")
-    @PutMapping(value = "/{profileId}", consumes = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<?> updateProfile(@PathVariable Long profileId, @RequestBody UpdateProfileResource resource) {
+    /**
+     * Get profile by email
+     */
+    @GetMapping("/email/{email}")
+    @Operation(summary = "Get profile by email", description = "Retrieves a profile by email address")
+    public ResponseEntity<ProfileResource> getProfileByEmail(
+            @Parameter(description = "Email address") @PathVariable String email) {
+        var profile = profileQueryService.handle(new GetProfileByEmailQuery(email));
+        
+        if (profile.isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+
+        var profileResource = ProfileResourceFromEntityAssembler.toResourceFromEntity(profile.get());
+        return ResponseEntity.ok(profileResource);
+    }
+
+    /**
+     * Update profile
+     */
+    @PutMapping("/{id}")
+    @Operation(summary = "Update profile", description = "Updates an existing profile")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Profile updated successfully"),
+        @ApiResponse(responseCode = "404", description = "Profile not found")
+    })
+    public ResponseEntity<ProfileResource> updateProfile(
+            @Parameter(description = "Profile ID") @PathVariable Long id,
+            @RequestBody UpdateProfileResource resource) {
+        var command = UpdateProfileCommandFromResourceAssembler.toCommandFromResource(id, resource);
+        var updatedProfile = profileCommandService.handle(command);
+        
+        if (updatedProfile.isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+
+        var profileResource = ProfileResourceFromEntityAssembler.toResourceFromEntity(updatedProfile.get());
+        return ResponseEntity.ok(profileResource);
+    }
+
+    /**
+     * Delete profile
+     */
+    @DeleteMapping("/{id}")
+    @Operation(summary = "Delete profile", description = "Deletes an existing profile")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "204", description = "Profile deleted successfully"),
+        @ApiResponse(responseCode = "404", description = "Profile not found")
+    })
+    public ResponseEntity<Void> deleteProfile(
+            @Parameter(description = "Profile ID") @PathVariable Long id) {
+        var profile = profileQueryService.handle(new GetProfileByIdQuery(id));
+        
+        if (profile.isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+
+        profileCommandService.handle(new DeleteProfileCommand(id));
+        return ResponseEntity.noContent().build();
+    }
+
+    /**
+     * Get profiles by business role
+     */
+    @GetMapping("/business-role/{role}")
+    @Operation(summary = "Get profiles by business role", description = "Retrieves profiles filtered by business role")
+    public ResponseEntity<List<ProfileResource>> getProfilesByBusinessRole(
+            @Parameter(description = "Business role (LEARNER, PARTNER, ADMIN)") @PathVariable String role) {
         try {
-            var updateProfileCommand = UpdateProfileCommandFromResourceAssembler.toCommandFromResource(profileId, resource);
-            var optionalProfile = this.profileCommandService.handle(updateProfileCommand);
-            if (optionalProfile.isEmpty()) return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Profile not found");
-            var profileResource = ProfileResourceFromEntityAssembler.toResourceFromEntity(optionalProfile.get());
-            return ResponseEntity.ok(profileResource);
-        } catch (IllegalArgumentException ex) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ex.getMessage());
+            // Convert string to enum
+            BusinessRoles businessRoleEnum = BusinessRoles.valueOf(role.toUpperCase());
+            
+            // Find the BusinessRole entity by the enum value
+            var businessRole = businessRoleQueryService.handle(new GetBusinessRoleByNameQuery(businessRoleEnum));
+            if (businessRole.isEmpty()) {
+                return ResponseEntity.badRequest().build();
+            }
+            
+            // Query profiles using the BusinessRole entity
+            var profiles = profileQueryService.handle(new GetProfilesByBusinessRoleQuery(businessRole.get()));
+            var profileResources = profiles.stream()
+                    .map(ProfileResourceFromEntityAssembler::toResourceFromEntity)
+                    .toList();
+            return ResponseEntity.ok(profileResources);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().build();
         }
     }
 
-    @Operation(summary = "Delete a profile by id")
-    @DeleteMapping("/{profileId}")
-    public ResponseEntity<?> deleteProfile(@PathVariable Long profileId) {
-        try {
-            this.profileCommandService.handle(new DeleteProfileCommand(profileId));
-            return ResponseEntity.noContent().build();
-        } catch (IllegalArgumentException ex) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ex.getMessage());
-        }
+    /**
+     * Get profiles by age
+     */
+    @GetMapping("/age/{age}")
+    @Operation(summary = "Get profiles by age", description = "Retrieves profiles filtered by age")
+    public ResponseEntity<List<ProfileResource>> getProfilesByAge(
+            @Parameter(description = "Age") @PathVariable Integer age) {
+        var profiles = profileQueryService.handle(new GetProfileByAgeQuery(age));
+        var profileResources = profiles.stream()
+                .map(ProfileResourceFromEntityAssembler::toResourceFromEntity)
+                .toList();
+        return ResponseEntity.ok(profileResources);
     }
 }

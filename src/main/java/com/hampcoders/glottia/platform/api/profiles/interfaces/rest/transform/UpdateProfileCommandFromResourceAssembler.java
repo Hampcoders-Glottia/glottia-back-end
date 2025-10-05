@@ -7,12 +7,10 @@ public class UpdateProfileCommandFromResourceAssembler {
     public static UpdateProfileCommand toCommandFromResource(Long profileId, UpdateProfileResource resource) {
         return new UpdateProfileCommand(
                 profileId,
-                resource.name(),
+                resource.firstName(),
+                resource.lastName(),
                 resource.age(),
-                resource.email(),
-                resource.language(),
-                resource.level(),
-                resource.country()
+                resource.email()
         );
     }
 }
