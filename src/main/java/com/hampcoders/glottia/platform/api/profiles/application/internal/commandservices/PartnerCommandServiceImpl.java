@@ -37,9 +37,9 @@ public class PartnerCommandServiceImpl implements PartnerCommandService {
         }
         
         // Validate if subscription status exists
-        var subscriptionStatusId = command.subscriptionStatusId() != null ? command.subscriptionStatusId() : 1L; // Default: PENDING
+        /*var subscriptionStatusId = command.subscriptionStatusId() != null ? command.subscriptionStatusId() : 1L; // Default: PENDING
         var subscriptionStatus = subscriptionStatusQueryService.handle(new GetSubscriptionStatusByIdQuery(subscriptionStatusId))
-            .orElseThrow(() -> new IllegalArgumentException("Subscription status with id " + subscriptionStatusId + " not found"));
+            .orElseThrow(() -> new IllegalArgumentException("Subscription status with id " + subscriptionStatusId + " not found"));*/
         
         // Assign as partner
         profile.assignAsPartner(

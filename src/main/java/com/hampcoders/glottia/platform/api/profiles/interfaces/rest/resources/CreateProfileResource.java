@@ -28,8 +28,6 @@ public record CreateProfileResource(
     String contactPhone,
     String contactPersonName,
     String description,
-    String websiteUrl,
-    String instagramHandle,
     Long subscriptionStatusId
 ) {
     // Helper methods para validation

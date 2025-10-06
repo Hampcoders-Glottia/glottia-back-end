@@ -54,7 +54,7 @@ public class Partner {
     // Update partner information
     public void updateInformation(String legalName, String businessName, String taxId,
                                  String contactEmail, String contactPhone, String contactPersonName,
-                                 String description, String websiteUrl, String instagramHandle) {
+                                 String description) {
         this.legalName = legalName;
         this.businessName = businessName;
         this.taxId = taxId;

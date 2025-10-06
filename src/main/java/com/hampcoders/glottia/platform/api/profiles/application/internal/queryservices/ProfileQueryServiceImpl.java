@@ -41,7 +41,7 @@ public class ProfileQueryServiceImpl implements ProfileQueryService {
 
     @Override
     public List<Profile> handle(GetProfilesByBusinessRoleQuery query) {
-        return this.profileRepository.findByBusinessRole(query.businessRole());
+        return this.profileRepository.findByBusinessRole(query.businessRole().getRole());
     }
 
 }

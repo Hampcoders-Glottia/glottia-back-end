@@ -16,6 +16,7 @@ import com.hampcoders.glottia.platform.api.profiles.domain.model.commands.Delete
 import com.hampcoders.glottia.platform.api.profiles.domain.model.commands.AddLanguageToLearnerCommand;
 import com.hampcoders.glottia.platform.api.profiles.domain.model.commands.RemoveLanguageFromLearnerCommand;
 import com.hampcoders.glottia.platform.api.profiles.domain.model.commands.UpdateLearnerLanguageCommand;
+import com.hampcoders.glottia.platform.api.profiles.domain.model.entities.BusinessRole;
 import com.hampcoders.glottia.platform.api.profiles.domain.model.queries.*;
 import com.hampcoders.glottia.platform.api.profiles.domain.model.valueobjects.BusinessRoles;
 import com.hampcoders.glottia.platform.api.profiles.domain.services.ProfileCommandService;
@@ -72,7 +73,7 @@ public class ProfilesController {
                 .toCommandFromResource(resource);
             var profileId = profileCommandService.handle(command);
 
-            var optionalProfile = profileQueryService.handle(new GetProfileByIdQuery());
+            var optionalProfile = profileQueryService.handle(new GetProfileByIdQuery(profileId));
 
             if (optionalProfile.isEmpty()) {
                 return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
@@ -281,7 +282,7 @@ public class ProfilesController {
             @Parameter(description = "Business role (LEARNER, PARTNER, ADMIN)") @PathVariable String role) {
         try {
             // Convert string to enum
-            BusinessRoles businessRoleEnum = BusinessRoles.valueOf(role.toUpperCase());
+            BusinessRole businessRoleEnum = BusinessRole.toBusinessRoleFromName(role);
             
             // Query profiles directly using the BusinessRoles enum
             var profiles = profileQueryService.handle(new GetProfilesByBusinessRoleQuery(businessRoleEnum));

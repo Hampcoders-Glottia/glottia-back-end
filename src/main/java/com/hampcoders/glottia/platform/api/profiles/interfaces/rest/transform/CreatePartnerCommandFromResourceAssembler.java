@@ -14,8 +14,7 @@ public class CreatePartnerCommandFromResourceAssembler {
             resource.contactEmail(),
             resource.contactPhone(),
             resource.contactPersonName(),
-            resource.description(),
-            resource.subscriptionStatusId()
+            resource.description()
         );
     }
 }

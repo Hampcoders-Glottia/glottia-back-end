@@ -14,9 +14,7 @@ public class PartnerResourceFromEntityAssembler {
             entity.getContactEmail(),
             entity.getContactPhone(),
             entity.getContactPersonName(),
-            entity.getDescription(),
-            entity.getSubscriptionStatus() != null ? 
-                entity.getSubscriptionStatus().getName().name() : "PENDING"
+            entity.getDescription()
         );
     }
 }

@@ -8,7 +8,6 @@ public record PartnerResource(
     String contactEmail,
     String contactPhone,
     String contactPersonName,
-    String description,
-    String subscriptionStatus
+    String description
 ) {
 }

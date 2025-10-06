@@ -8,8 +8,7 @@ public record CreatePartnerCommand(
     String contactEmail,
     String contactPhone,
     String contactPersonName,
-    String description,
-    Long subscriptionStatusId
+    String description
 ) {
     public CreatePartnerCommand {
         if (profileId == null) {
