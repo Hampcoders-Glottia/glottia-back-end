@@ -285,7 +285,7 @@ public class ProfilesController {
             BusinessRole businessRoleEnum = BusinessRole.toBusinessRoleFromName(role);
             
             // Query profiles directly using the BusinessRoles enum
-            var profiles = profileQueryService.handle(new GetProfilesByBusinessRoleQuery(businessRoleEnum));
+            var profiles = profileQueryService.handle(new GetProfilesByBusinessRoleQuery(businessRoleEnum.getRole()));
             var profileResources = profiles.stream()
                     .map(ProfileResourceFromEntityAssembler::toResourceFromEntity)
                     .toList();
