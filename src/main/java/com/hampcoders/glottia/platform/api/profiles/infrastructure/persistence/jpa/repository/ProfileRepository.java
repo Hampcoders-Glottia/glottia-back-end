@@ -1,7 +1,7 @@
 package com.hampcoders.glottia.platform.api.profiles.infrastructure.persistence.jpa.repository;
 
 import com.hampcoders.glottia.platform.api.profiles.domain.model.aggregates.Profile;
-import com.hampcoders.glottia.platform.api.profiles.domain.model.entities.BusinessRole;
+import com.hampcoders.glottia.platform.api.profiles.domain.model.valueobjects.BusinessRoles;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -18,11 +18,11 @@ public interface ProfileRepository extends JpaRepository<Profile, Long> {
     @Query("SELECT COUNT(p) > 0 FROM Profile p WHERE CONCAT(p.firstName, ' ', p.lastName) = :fullName AND p.id != :id")
     boolean existsByFullNameAndIdIsNot(@Param("fullName") String fullName, @Param("id") Long id);
     
-    // Add @Query annotation for this method too!
     @Query("SELECT p FROM Profile p WHERE CONCAT(p.firstName, ' ', p.lastName) = :fullName")
     Optional<Profile> findByFullName(@Param("fullName") String fullName);
     
     Optional<Profile> findByEmail(String email);
     List<Profile> findByAge(int age);
-    List<Profile> findByBusinessRolesContaining(BusinessRole businessRole);
+    List<Profile> findByBusinessRole(BusinessRoles businessRole);
+    Optional<Profile> findByUserId(String userId);
 }
