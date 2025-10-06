@@ -13,8 +13,6 @@ public interface ProfileQueryService {
     List<Profile> handle(GetAllProfilesQuery query);
     Optional<Profile> handle(GetProfileByIdQuery query);
     Optional<Profile> handle(GetProfileByEmailQuery query);
-    List<Profile> handle(GetProfileByLanguageQuery query);
-    List<Profile> handle(GetProfileByLevelQuery query);
-    List<Profile> handle(GetProfileByAgeQuery query);
     List<Profile> handle(GetProfilesByBusinessRoleQuery query);
+    List<Profile> handle(GetProfileByAgeQuery query);
 }
