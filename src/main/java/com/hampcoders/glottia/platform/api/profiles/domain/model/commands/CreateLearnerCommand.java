@@ -1,11 +1,19 @@
 package com.hampcoders.glottia.platform.api.profiles.domain.model.commands;
 
-import com.hampcoders.glottia.platform.api.profiles.domain.model.valueobjects.Address;
 
 public record CreateLearnerCommand(
     Long profileId,
-    Address address
+    String street,
+    String number,
+    String city,
+    String postalCode,
+    String country,
+    Float latitude,
+    Float longitude
 ) {
-    // Learner creation with address - the Profile relationship and address are the main requirements
-    // Additional language preferences can be added later via AddLanguageToLearnerCommand
+    public CreateLearnerCommand {
+        if (profileId == null) {
+            throw new IllegalArgumentException("Profile ID is required");
+        }
+    }
 }

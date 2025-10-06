@@ -4,6 +4,6 @@ public record UpdateLearnerLanguageCommand(
     Long learnerId,
     Long languageId,
     Long cefrLevelId,
-    boolean isLearning
+    Boolean isLearning
 ) {
 }

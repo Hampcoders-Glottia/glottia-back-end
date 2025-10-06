@@ -1,12 +1,18 @@
 package com.hampcoders.glottia.platform.api.profiles.domain.model.commands;
 
+import com.hampcoders.glottia.platform.api.profiles.domain.model.valueobjects.BusinessRoles;
 
-public record CreateProfileCommand(
+public record CompleteRegistrationCommand(
+    // User credentials
+    String username,
+    String password,
+    
+    // Profile data
     String firstName,
     String lastName,
     int age,
     String email,
-    String businessRole,
+    BusinessRoles businessRole,
     
     // Learner specific fields (optional)
     String street,
@@ -24,6 +30,8 @@ public record CreateProfileCommand(
     String contactEmail,
     String contactPhone,
     String contactPersonName,
-    String description
+    String description,
+    String websiteUrl,
+    String instagramHandle
 ) {
 }

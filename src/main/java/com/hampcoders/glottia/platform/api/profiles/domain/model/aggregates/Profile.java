@@ -1,11 +1,11 @@
 package com.hampcoders.glottia.platform.api.profiles.domain.model.aggregates;
 
-import java.util.HashSet;
-import java.util.Set;
-
 import com.hampcoders.glottia.platform.api.profiles.domain.model.commands.CreateProfileCommand;
 import com.hampcoders.glottia.platform.api.profiles.domain.model.commands.UpdateProfileCommand;
 import com.hampcoders.glottia.platform.api.profiles.domain.model.entities.BusinessRole;
+import com.hampcoders.glottia.platform.api.profiles.domain.model.entities.Learner;
+import com.hampcoders.glottia.platform.api.profiles.domain.model.entities.Partner;
+import com.hampcoders.glottia.platform.api.profiles.domain.model.entities.SubscriptionStatus;
 import com.hampcoders.glottia.platform.api.shared.domain.model.aggregates.AuditableAbstractAggregateRoot;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.Max;
@@ -45,13 +45,9 @@ public class Profile extends AuditableAbstractAggregateRoot<Profile> {
     @Column(name = "email", length = 100, nullable = false, unique = true)
     private String email;
 
-    @ManyToMany(fetch = FetchType.EAGER, cascade = CascadeType.ALL)
-    @JoinTable(
-            name = "profiles_business_roles",
-            joinColumns = @JoinColumn(name = "profile_id"),
-            inverseJoinColumns = @JoinColumn(name = "business_role_id")
-    )
-    private Set<BusinessRole> businessRoles;
+    @OneToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "status_id", nullable = false)
+    private BusinessRole businessRole;
 
     // Profile can be either a Learner or a Partner, but not both
     // Using nullable foreign keys - only one should be populated
@@ -66,15 +62,16 @@ public class Profile extends AuditableAbstractAggregateRoot<Profile> {
     // --- Constructors ---
 
     public Profile() {
-        this.businessRoles = new HashSet<>();
     }
 
-    public Profile(String firstName, String lastName, int age, String email) {
+    public Profile(String firstName, String lastName, int age, String email, BusinessRole businessRole) {
         this();
         this.firstName = firstName;
         this.lastName = lastName;
         this.age = age;
         this.email = email;
+        this.businessRole = businessRole;
+
     }
 
     public Profile(CreateProfileCommand command) {
@@ -83,15 +80,14 @@ public class Profile extends AuditableAbstractAggregateRoot<Profile> {
         this.lastName = command.lastName();
         this.age = command.age();
         this.email = command.email();
-        if (command.businessRoles() != null) {
-            this.businessRoles.addAll(command.businessRoles());
-        }
+        this.businessRole = BusinessRole.toBusinessRoleFromName(command.businessRole());
+        
     }
 
     // --- Role assignment ---
 
     /**
-     * Assigns this profile as a Learner
+     * Assigns this profile as a Learner with address information
      * Business rule: Profile can only be one type at a time
      */
     public void assignAsLearner(Learner learner) {
@@ -101,8 +97,26 @@ public class Profile extends AuditableAbstractAggregateRoot<Profile> {
         this.learner = learner;
     }
 
+
+    public void assignAsLearner(
+        String street,
+        String number,
+        String city,
+        String postalCode,
+        String country,
+        float latitude,
+        float longitude) {
+    
+        if (this.partner != null) {
+            throw new IllegalStateException("Cannot assign Learner. Profile is already assigned as Partner.");
+        }
+        // FIX: Create the Learner entity here
+        Learner newLearner = new Learner(street, number, city, postalCode, country, latitude, longitude);
+        this.learner = newLearner;
+    }
+    
     /**
-     * Assigns this profile as a Partner  
+     * Assigns this profile as a Partner with business information  
      * Business rule: Profile can only be one type at a time
      */
     public void assignAsPartner(Partner partner) {
@@ -110,6 +124,22 @@ public class Profile extends AuditableAbstractAggregateRoot<Profile> {
             throw new IllegalStateException("Cannot assign Partner. Profile is already assigned as Learner.");
         }
         this.partner = partner;
+    }
+    public void assignAsPartner(
+        String legalName,
+        String businessName,
+        String taxId,
+        String contactEmail,
+        String contactPhone,
+        String contactPersonName,
+        String description) {
+        
+        if (this.learner != null) {
+            throw new IllegalStateException("Cannot assign Partner. Profile is already assigned as Learner.");
+        }
+        // FIX: Create the Partner entity here
+        Partner newPartner = new Partner(legalName, businessName, taxId, contactEmail, contactPhone, contactPersonName, description);
+        this.partner = newPartner;
     }
 
     // --- Updates ---
@@ -119,14 +149,6 @@ public class Profile extends AuditableAbstractAggregateRoot<Profile> {
         this.lastName = command.lastName();
         this.age = command.age();
         this.email = command.email();
-    }
-
-    public void addBusinessRole(BusinessRole businessRole) {
-        this.businessRoles.add(businessRole);
-    }
-
-    public void removeBusinessRole(BusinessRole businessRole) {
-        this.businessRoles.remove(businessRole);
     }
 
     // --- Type checking methods ---
@@ -162,9 +184,7 @@ public class Profile extends AuditableAbstractAggregateRoot<Profile> {
      * Gets the primary language from learner's languages (if learner), otherwise null
      */
     public String getLanguage() {
-        if (this.learner != null && !this.learner.getLanguages().isEmpty()) {
-            return this.learner.getLanguages().get(0).getLanguage().getStringLanguageName();
-        }
+        // TODO: Implement language management for learners
         return null;
     }
 
@@ -172,9 +192,7 @@ public class Profile extends AuditableAbstractAggregateRoot<Profile> {
      * Gets the primary level from learner's languages (if learner), otherwise null
      */
     public String getLevel() {
-        if (this.learner != null && !this.learner.getLanguages().isEmpty()) {
-            return this.learner.getLanguages().get(0).getCefrLevel().getStringCefrLevelName();
-        }
+        // TODO: Implement CEFR level management for learners
         return null;
     }
 
@@ -183,8 +201,8 @@ public class Profile extends AuditableAbstractAggregateRoot<Profile> {
      * Partners don't manage addresses as they represent business relationships
      */
     public String getCountry() {
-        if (this.learner != null && this.learner.getAddress() != null) {
-            return this.learner.getAddress().country();
+        if (this.learner != null) {
+            return this.learner.getCountry();
         }
         return null;
     }

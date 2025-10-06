@@ -37,7 +37,7 @@ public class BusinessRole {
         return role.name();
     }
 
-    static BusinessRole toBusinessRoleFromName(String name) {
+    public static BusinessRole toBusinessRoleFromName(String name) {
         return new BusinessRole(BusinessRoles.valueOf(name));
     }
 }

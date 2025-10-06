@@ -9,7 +9,11 @@ public record CreatePartnerCommand(
     String contactPhone,
     String contactPersonName,
     String description,
-    String websiteUrl,
-    String instagramHandle
+    Long subscriptionStatusId
 ) {
+    public CreatePartnerCommand {
+        if (profileId == null) {
+            throw new IllegalArgumentException("Profile ID is required");
+        }
+    }
 }
