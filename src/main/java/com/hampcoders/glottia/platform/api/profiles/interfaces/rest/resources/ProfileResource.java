@@ -10,14 +10,21 @@ public record ProfileResource(
         int age,
         String email,
         String businessRole, // Single business role name
-        String profileType, // "LEARNER", "PARTNER", or "UNASSIGNED"
         
         // Optional fields depending on profile type
         String street,
+        String number,  
         String city,
+        String postalCode,
         String country,
-        String languageInfo, // For Learners - languages and levels
-        String businessInfo, // For Partners - business name, contact info
+
+        String legalName,
+        String businessName,
+        String taxId,
+        String contactEmail,
+        String contactPhone,
+        String description,
+        String contactPersonName,
         Long learnerId, // Only if is Learner
         Long partnerId // Only if is Partner
 ) {

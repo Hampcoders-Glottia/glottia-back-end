@@ -9,8 +9,6 @@ public record PartnerResource(
     String contactPhone,
     String contactPersonName,
     String description,
-    String websiteUrl,
-    String instagramHandle,
     String subscriptionStatus
 ) {
 }

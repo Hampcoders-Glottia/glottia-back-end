@@ -1,72 +1,82 @@
 package com.hampcoders.glottia.platform.api.profiles.interfaces.rest.transform;
 
 import com.hampcoders.glottia.platform.api.profiles.domain.model.aggregates.Profile;
+import com.hampcoders.glottia.platform.api.profiles.domain.model.entities.Partner;
 import com.hampcoders.glottia.platform.api.profiles.interfaces.rest.resources.ProfileResource;
 import java.util.List;
 import java.util.stream.Collectors;
 
 public class ProfileResourceFromEntityAssembler {
+
     public static ProfileResource toResourceFromEntity(Profile entity) {
-        // Get the first (primary) business role name
-        String businessRole = entity.getBusinessRoles().isEmpty() ? 
-            "NONE" : 
-            entity.getBusinessRoles().iterator().next().getStringRoleName();
-            
-        // Determine profile type
-        String profileType;
+        String info = null;
         String street = null;
-        String city = null; 
+        String number = null;
+        String city = null;
+        String postalCode = null;
         String country = null;
-        String languageInfo = null;
-        String businessInfo = null;
+        String legalName = null;
+        String businessName = null;
+        String taxId = null;
+        String contactEmail = null;
+        String contactPhone = null;
+        String description = null;
+        String contactPersonName = null;
         Long learnerId = null;
         Long partnerId = null;
-        
-        if (entity.isLearner()) {
-            profileType = "LEARNER";
-            var learner = entity.getLearner();
-            if (learner != null) {
-                learnerId = learner.getId();
-                if (learner.getAddress() != null) {
-                    street = learner.getAddress().street();
-                    city = learner.getAddress().city();
-                    country = learner.getAddress().country();
+
+        switch (entity.getBusinessRole().getRole()) {
+            case Learner -> {
+                if (entity.getLearner() != null) {
+                    info = entity.getLearner().getFullAddress();
+                    street = entity.getLearner().getStreet();
+                    number = entity.getLearner().getNumber();
+                    city = entity.getLearner().getCity();
+                    postalCode = entity.getLearner().getPostalCode();
+                    country = entity.getLearner().getCountry();
+                    learnerId = entity.getLearner().getId();
+                } else {
+                    throw new IllegalStateException("Learner details are missing for profile ID: " + entity.getId());
                 }
-                // Build language info
-                languageInfo = learner.getLanguages().stream()
-                    .map(lang -> lang.getLanguage().getStringLanguageName() + ":" + lang.getCefrLevel().getStringCefrLevelName())
-                    .collect(Collectors.joining(", "));
             }
-        } else if (entity.isPartner()) {
-            profileType = "PARTNER";
-            var partner = entity.getPartner();
-            if (partner != null) {
-                partnerId = partner.getId();
-                businessInfo = partner.getBusinessName() + " - " + partner.getContactEmail();
+            case Partner -> {
+                if (entity.getPartner() != null) {
+                    info = entity.getPartner().getDisplayName();
+                    legalName = entity.getPartner().getLegalName();
+                    businessName = entity.getPartner().getBusinessName();
+                    taxId = entity.getPartner().getTaxId();
+                    contactEmail = entity.getPartner().getContactEmail();
+                    contactPhone = entity.getPartner().getContactPhone();
+                    description = entity.getPartner().getDescription();
+                    contactPersonName = entity.getPartner().getContactPersonName();
+                    partnerId = entity.getPartner().getId();
+                } else {
+                    throw new IllegalStateException("Partner details are missing for profile ID: " + entity.getId());
+                }
             }
-        } else {
-            profileType = "UNASSIGNED";
         }
-        
+
         return new ProfileResource(
                 entity.getId(),
                 entity.getFirstName(),
                 entity.getLastName(),
                 entity.getAge(),
                 entity.getEmail(),
-                businessRole,
-                profileType,
+                entity.getBusinessRole().getRole().name(), 
                 street,
+                number,
                 city,
+                postalCode,
                 country,
-                languageInfo,
-                businessInfo,
+                legalName,
+                businessName,
+                taxId,
+                contactEmail,
+                contactPhone,
+                description,
+                contactPersonName,
                 learnerId,
                 partnerId
         );
-    }
-
-    public static List<ProfileResource> toResourceListFromEntities(List<Profile> entities) {
-        return entities.stream().map(ProfileResourceFromEntityAssembler::toResourceFromEntity).collect(Collectors.toList());
     }
 }

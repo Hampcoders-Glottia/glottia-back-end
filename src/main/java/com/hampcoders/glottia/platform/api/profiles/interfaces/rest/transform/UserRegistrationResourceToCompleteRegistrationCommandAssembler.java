@@ -1,11 +1,14 @@
 package com.hampcoders.glottia.platform.api.profiles.interfaces.rest.transform;
 
-import com.hampcoders.glottia.platform.api.profiles.domain.model.commands.CreateProfileCommand;
-import com.hampcoders.glottia.platform.api.profiles.interfaces.rest.resources.CreateProfileResource;
+import com.hampcoders.glottia.platform.api.profiles.domain.model.commands.CompleteRegistrationCommand;
+import com.hampcoders.glottia.platform.api.profiles.interfaces.rest.resources.UserRegistrationResource;
 
-public class CreateProfileCommandFromResourceAssembler {
-    public static CreateProfileCommand toCommandFromResource(CreateProfileResource resource) {
-        return new CreateProfileCommand(
+public class UserRegistrationResourceToCompleteRegistrationCommandAssembler {
+    
+    public static CompleteRegistrationCommand toCommandFromResource(UserRegistrationResource resource) {
+        return new CompleteRegistrationCommand(
+            resource.username(),
+            resource.password(),
             resource.firstName(),
             resource.lastName(),
             resource.age(),
@@ -24,7 +27,9 @@ public class CreateProfileCommandFromResourceAssembler {
             resource.contactEmail(),
             resource.contactPhone(),
             resource.contactPersonName(),
-            resource.description()
+            resource.description(),
+            resource.websiteUrl(),
+            resource.instagramHandle()
         );
     }
 }

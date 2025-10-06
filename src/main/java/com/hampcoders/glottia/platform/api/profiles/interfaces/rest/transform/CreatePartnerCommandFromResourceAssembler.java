@@ -15,8 +15,7 @@ public class CreatePartnerCommandFromResourceAssembler {
             resource.contactPhone(),
             resource.contactPersonName(),
             resource.description(),
-            resource.websiteUrl(),
-            resource.instagramHandle()
+            resource.subscriptionStatusId()
         );
     }
 }

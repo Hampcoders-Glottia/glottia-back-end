@@ -1,6 +1,6 @@
 package com.hampcoders.glottia.platform.api.profiles.interfaces.rest.transform;
 
-import com.hampcoders.glottia.platform.api.profiles.domain.model.aggregates.Partner;
+import com.hampcoders.glottia.platform.api.profiles.domain.model.entities.Partner;
 import com.hampcoders.glottia.platform.api.profiles.interfaces.rest.resources.PartnerResource;
 
 public class PartnerResourceFromEntityAssembler {
@@ -15,9 +15,8 @@ public class PartnerResourceFromEntityAssembler {
             entity.getContactPhone(),
             entity.getContactPersonName(),
             entity.getDescription(),
-            entity.getWebsiteUrl(),
-            entity.getInstagramHandle(),
-            entity.getSubscriptionStatus().getStringStatusName() // Use the available method
+            entity.getSubscriptionStatus() != null ? 
+                entity.getSubscriptionStatus().getName().name() : "PENDING"
         );
     }
 }
