@@ -10,7 +10,7 @@ import com.hampcoders.glottia.platform.api.partner.interfaces.rest.resources.Ven
 import java.util.stream.Collectors;
 
 /**
- * Assembler para transformar la entidad de Dominio Partner a PartnerResource.
+     * Assembler para transformar la entidad de Dominio Partner a PartnerResource.
  * Sigue el patrón de transformación Entity -> Resource.
  */
 public class PartnerResourceFromEntityAssembler {

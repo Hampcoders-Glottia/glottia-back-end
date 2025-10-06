@@ -2,6 +2,9 @@ package com.hampcoders.glottia.platform.api.partner.domain.model.aggregates;
 
 import com.hampcoders.glottia.platform.api.partner.domain.model.entities.Venue;
 import jakarta.persistence.*;
+import lombok.Getter;
+import lombok.Setter;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -10,6 +13,9 @@ import java.util.Optional;
  * Aggregate Root para el Bounded Context Partner.
  * Toda modificación a los Venues debe pasar por el Partner.
  */
+
+@Getter
+@Setter
 @Entity
 @Table(name = "partners")
 public class Partner {
