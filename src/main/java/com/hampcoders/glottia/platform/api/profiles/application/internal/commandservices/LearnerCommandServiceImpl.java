@@ -1,109 +1,184 @@
 package com.hampcoders.glottia.platform.api.profiles.application.internal.commandservices;
 
-import com.hampcoders.glottia.platform.api.profiles.domain.model.aggregates.Learner;
+import org.springframework.stereotype.Service;
+
 import com.hampcoders.glottia.platform.api.profiles.domain.model.commands.AddLanguageToLearnerCommand;
 import com.hampcoders.glottia.platform.api.profiles.domain.model.commands.CreateLearnerCommand;
 import com.hampcoders.glottia.platform.api.profiles.domain.model.commands.RemoveLanguageFromLearnerCommand;
 import com.hampcoders.glottia.platform.api.profiles.domain.model.commands.UpdateLearnerLanguageCommand;
+import com.hampcoders.glottia.platform.api.profiles.domain.model.queries.GetCEFRLevelByIdQuery;
+import com.hampcoders.glottia.platform.api.profiles.domain.model.queries.GetLanguageByIdQuery;
+import com.hampcoders.glottia.platform.api.profiles.domain.services.CEFRLevelQueryService;
+import com.hampcoders.glottia.platform.api.profiles.domain.services.LanguageQueryService;
 import com.hampcoders.glottia.platform.api.profiles.domain.services.LearnerCommandService;
-import com.hampcoders.glottia.platform.api.profiles.infrastructure.persistence.jpa.repository.CEFRLevelRepository;
-import com.hampcoders.glottia.platform.api.profiles.infrastructure.persistence.jpa.repository.LanguageRepository;
-import com.hampcoders.glottia.platform.api.profiles.infrastructure.persistence.jpa.repository.LearnerRepository;
 import com.hampcoders.glottia.platform.api.profiles.infrastructure.persistence.jpa.repository.ProfileRepository;
 
-import org.springframework.stereotype.Service;
-
-import java.util.Optional;
+import jakarta.transaction.Transactional;
 
 @Service
 public class LearnerCommandServiceImpl implements LearnerCommandService {
 
-    private final LearnerRepository learnerRepository;
     private final ProfileRepository profileRepository;
-    private final LanguageRepository languageRepository;
-    private final CEFRLevelRepository cefrLevelRepository;
+    private final LanguageQueryService languageQueryService;
+    private final CEFRLevelQueryService cefrLevelQueryService;
 
-    public LearnerCommandServiceImpl(LearnerRepository learnerRepository, ProfileRepository profileRepository,
-                                   LanguageRepository languageRepository, CEFRLevelRepository cefrLevelRepository) {
-        this.learnerRepository = learnerRepository;
+    public LearnerCommandServiceImpl(ProfileRepository profileRepository,
+                                   LanguageQueryService languageQueryService,
+                                   CEFRLevelQueryService cefrLevelQueryService) {
         this.profileRepository = profileRepository;
-        this.languageRepository = languageRepository;
-        this.cefrLevelRepository = cefrLevelRepository;
+        this.languageQueryService = languageQueryService;
+        this.cefrLevelQueryService = cefrLevelQueryService;
     }
 
     @Override
+    @Transactional
     public Long handle(CreateLearnerCommand command) {
-        var profile = this.profileRepository.findById(command.profileId())
-                .orElseThrow(() -> new IllegalArgumentException("Profile with id " + command.profileId() + " does not exist"));
+        // Validate if profile exists
+        var profile = profileRepository.findById(command.profileId())
+            .orElseThrow(() -> new IllegalArgumentException("Profile with id " + command.profileId() + " not found"));
         
-        if (profile.getLearner() != null) {
-            throw new IllegalArgumentException("Profile " + command.profileId() + " is already assigned as a Learner");
+        // Validate if profile is not already a learner
+        if (profile.isLearner()) {
+            throw new IllegalArgumentException("Profile with id " + command.profileId() + " is already a learner");
         }
         
-        if (profile.getPartner() != null) {
-            throw new IllegalArgumentException("Profile " + command.profileId() + " is already assigned as a Partner");
-        }
-
-        var learner = new Learner(command);
-        profile.assignAsLearner(learner);
+        // Assign as learner
+        profile.assignAsLearner(
+            command.street(),
+            command.number(),
+            command.city(),
+            command.postalCode(),
+            command.country(),
+            command.latitude(),
+            command.longitude()
+        );
         
         try {
-            this.learnerRepository.save(learner);
-            this.profileRepository.save(profile);
+            profileRepository.save(profile);
         } catch (Exception e) {
             throw new IllegalArgumentException("Error while saving learner: " + e.getMessage());
         }
         
-        return learner.getId();
+        return profile.getLearner().getId();
     }
 
     @Override
-    public Optional<Learner> handle(AddLanguageToLearnerCommand command) {
-        var learner = this.learnerRepository.findById(command.learnerId())
-                .orElseThrow(() -> new IllegalArgumentException("Learner with id " + command.learnerId() + " does not exist"));
+    @Transactional
+    public Long handle(AddLanguageToLearnerCommand command) {
+        // Validate if profile exists
+        var profile = profileRepository.findById(command.learnerId())
+            .orElseThrow(() -> new IllegalArgumentException("Profile with id " + command.learnerId() + " not found"));
+
+        // Validate if profile is a learner
+        if (!profile.isLearner()) {
+            throw new IllegalArgumentException("Profile with id " + command.learnerId() + " is not a learner");
+        }
         
-        var language = this.languageRepository.findById(command.languageId())
-                .orElseThrow(() -> new IllegalArgumentException("Language with id " + command.languageId() + " does not exist"));
+        // Validate if language exists
+        var language = languageQueryService.handle(new GetLanguageByIdQuery(command.languageId()))
+            .orElseThrow(() -> new IllegalArgumentException("Language with id " + command.languageId() + " not found"));
         
-        var cefrLevel = this.cefrLevelRepository.findById(command.cefrLevelId())
-                .orElseThrow(() -> new IllegalArgumentException("CEFR Level with id " + command.cefrLevelId() + " does not exist"));
+        // Validate if CEFR level exists
+        var cefrLevel = cefrLevelQueryService.handle(new GetCEFRLevelByIdQuery(command.cefrLevelId()))
+            .orElseThrow(() -> new IllegalArgumentException("CEFR Level with id " + command.cefrLevelId() + " not found"));
         
+        // Validate if language is not already added to learner
+        var learner = profile.getLearner();
+        if (learner.hasLanguage(language)) {
+            throw new IllegalArgumentException("Language " + language.getStringLanguageName() + 
+                " is already added to learner with id " + learner.getId());
+        }
+        
+        // Add language to learner
         learner.addLanguage(language, cefrLevel, command.isLearning());
-        var updatedLearner = this.learnerRepository.save(learner);
         
-        return Optional.of(updatedLearner);
+        try {
+            profileRepository.save(profile);
+        } catch (Exception e) {
+            throw new IllegalArgumentException("Error while adding language to learner: " + e.getMessage());
+        }
+        
+        // Return the language item id
+        var languageItem = learner.getLearnerLanguageItems().stream()
+            .filter(item -> item.getLanguage().getId().equals(language.getId()))
+            .findFirst()
+            .orElseThrow(() -> new IllegalArgumentException("Language item not found after saving"));
+        
+        return languageItem.getId();
     }
 
     @Override
-    public Optional<Learner> handle(RemoveLanguageFromLearnerCommand command) {
-        var learner = this.learnerRepository.findById(command.learnerId())
-                .orElseThrow(() -> new IllegalArgumentException("Learner with id " + command.learnerId() + " does not exist"));
+    @Transactional
+    public void handle(RemoveLanguageFromLearnerCommand command) {
+        // Validate if profile exists
+        var profile = profileRepository.findById(command.learnerId())
+            .orElseThrow(() -> new IllegalArgumentException("Profile with id " + command.learnerId() + " not found"));
+
+        // Validate if profile is a learner
+        if (!profile.isLearner()) {
+            throw new IllegalArgumentException("Profile with id " + command.learnerId() + " is not a learner");
+        }
         
-        var language = this.languageRepository.findById(command.languageId())
-                .orElseThrow(() -> new IllegalArgumentException("Language with id " + command.languageId() + " does not exist"));
+        // Validate if language exists
+        var language = languageQueryService.handle(new GetLanguageByIdQuery(command.languageId()))
+            .orElseThrow(() -> new IllegalArgumentException("Language with id " + command.languageId() + " not found"));
         
+        // Validate if language is added to learner
+        var learner = profile.getLearner();
+        if (!learner.hasLanguage(language)) {
+            throw new IllegalArgumentException("Language " + language.getStringLanguageName() + 
+                " is not added to learner with id " + learner.getId());
+        }
+        
+        // Remove language from learner
         learner.removeLanguage(language);
-        var updatedLearner = this.learnerRepository.save(learner);
         
-        return Optional.of(updatedLearner);
+        try {
+            profileRepository.save(profile);
+        } catch (Exception e) {
+            throw new IllegalArgumentException("Error while removing language from learner: " + e.getMessage());
+        }
     }
 
     @Override
-    public Optional<Learner> handle(UpdateLearnerLanguageCommand command) {
-        var learner = this.learnerRepository.findById(command.learnerId())
-                .orElseThrow(() -> new IllegalArgumentException("Learner with id " + command.learnerId() + " does not exist"));
+    @Transactional
+    public void handle(UpdateLearnerLanguageCommand command) {
+        // Validate if profile exists
+        var profile = profileRepository.findById(command.learnerId())
+            .orElseThrow(() -> new IllegalArgumentException("Profile with id " + command.learnerId() + " not found"));
+
+        // Validate if profile is a learner
+        if (!profile.isLearner()) {
+            throw new IllegalArgumentException("Profile with id " + command.learnerId() + " is not a learner");
+        }
         
-        var language = this.languageRepository.findById(command.languageId())
-                .orElseThrow(() -> new IllegalArgumentException("Language with id " + command.languageId() + " does not exist"));
+        // Validate if language exists
+        var language = languageQueryService.handle(new GetLanguageByIdQuery(command.languageId()))
+            .orElseThrow(() -> new IllegalArgumentException("Language with id " + command.languageId() + " not found"));
         
-        var cefrLevel = this.cefrLevelRepository.findById(command.cefrLevelId())
-                .orElseThrow(() -> new IllegalArgumentException("CEFR Level with id " + command.cefrLevelId() + " does not exist"));
+        // Validate if language is added to learner
+        var learner = profile.getLearner();
+        if (!learner.hasLanguage(language)) {
+            throw new IllegalArgumentException("Language " + language.getStringLanguageName() + 
+                " is not added to learner with id " + learner.getId());
+        }
         
-        // Update language by removing and re-adding with new values
-        learner.removeLanguage(language);
-        learner.addLanguage(language, cefrLevel, command.isLearning());
-        var updatedLearner = this.learnerRepository.save(learner);
+        // Update CEFR level if provided
+        if (command.cefrLevelId() != null) {
+            var cefrLevel = cefrLevelQueryService.handle(new GetCEFRLevelByIdQuery(command.cefrLevelId()))
+                .orElseThrow(() -> new IllegalArgumentException("CEFR Level with id " + command.cefrLevelId() + " not found"));
+            learner.updateLanguageLevel(language, cefrLevel);
+        }
         
-        return Optional.of(updatedLearner);
+        // Update learning status if provided
+        if (command.isLearning() != null) {
+            learner.updateLanguageLearningStatus(language, command.isLearning());
+        }
+        
+        try {
+            profileRepository.save(profile);
+        } catch (Exception e) {
+            throw new IllegalArgumentException("Error while updating learner language: " + e.getMessage());
+        }
     }
 }

@@ -35,32 +35,13 @@ public class ProfileQueryServiceImpl implements ProfileQueryService {
     }
 
     @Override
-    public List<Profile> handle(GetProfileByLanguageQuery query) {
-        // Filter profiles that have learners with the specified language
-        return this.profileRepository.findAll().stream()
-                .filter(profile -> profile.getLearner() != null && 
-                    profile.getLearner().getLanguages().stream()
-                        .anyMatch(lang -> lang.getLanguage().getLanguage().equals(query.language())))
-                .collect(Collectors.toList());
-    }
-
-    @Override
-    public List<Profile> handle(GetProfileByLevelQuery query) {
-        // Filter profiles that have learners with the specified CEFR level
-        return this.profileRepository.findAll().stream()
-                .filter(profile -> profile.getLearner() != null && 
-                    profile.getLearner().getLanguages().stream()
-                        .anyMatch(lang -> lang.getCefrLevel().getLevel().equals(query.level())))
-                .collect(Collectors.toList());
-    }
-
-    @Override
     public List<Profile> handle(GetProfileByAgeQuery query) {
         return this.profileRepository.findByAge(query.age());
     }
 
     @Override
     public List<Profile> handle(GetProfilesByBusinessRoleQuery query) {
-        return this.profileRepository.findByBusinessRolesContaining(query.businessRole());
+        return this.profileRepository.findByBusinessRole(query.businessRole());
     }
+
 }
