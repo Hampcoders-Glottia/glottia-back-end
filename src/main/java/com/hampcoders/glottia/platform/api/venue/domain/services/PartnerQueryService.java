@@ -1,12 +1,12 @@
-package com.hampcoders.glottia.platform.api.partner.domain.services;
-
-import com.hampcoders.glottia.platform.api.partner.domain.model.aggregates.Partner;
-import com.hampcoders.glottia.platform.api.partner.domain.model.entities.TableVenue;
-import com.hampcoders.glottia.platform.api.partner.domain.model.entities.Venue;
-import com.hampcoders.glottia.platform.api.partner.domain.model.queries.*;
+package com.hampcoders.glottia.platform.api.venue.domain.services;
 
 import java.util.List;
 import java.util.Optional;
+
+import com.hampcoders.glottia.platform.api.venue.domain.model.aggregates.Partner;
+import com.hampcoders.glottia.platform.api.venue.domain.model.entities.TableVenue;
+import com.hampcoders.glottia.platform.api.venue.domain.model.entities.Venue;
+import com.hampcoders.glottia.platform.api.venue.domain.model.queries.*;
 
 /**
  * Servicio de dominio para procesar consultas relacionadas con Partner.

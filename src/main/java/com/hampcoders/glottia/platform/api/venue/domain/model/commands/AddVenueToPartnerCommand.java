@@ -1,8 +1,8 @@
-package com.hampcoders.glottia.platform.api.partner.domain.model.commands;
-
-import com.hampcoders.glottia.platform.api.partner.domain.model.entities.TableVenue;
+package com.hampcoders.glottia.platform.api.venue.domain.model.commands;
 
 import java.util.List;
+
+import com.hampcoders.glottia.platform.api.venue.domain.model.entities.TableVenue;
 
 /**
  * Comando para agregar un nuevo Venue a un Partner.

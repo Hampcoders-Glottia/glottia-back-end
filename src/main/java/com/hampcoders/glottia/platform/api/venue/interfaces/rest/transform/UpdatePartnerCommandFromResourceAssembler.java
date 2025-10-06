@@ -1,7 +1,7 @@
-package com.hampcoders.glottia.platform.api.partner.interfaces.rest.transform;
+package com.hampcoders.glottia.platform.api.venue.interfaces.rest.transform;
 
-import com.hampcoders.glottia.platform.api.partner.domain.model.commands.UpdatePartnerCommand;
-import com.hampcoders.glottia.platform.api.partner.interfaces.rest.resources.UpdatePartnerResource;
+import com.hampcoders.glottia.platform.api.venue.domain.model.commands.UpdatePartnerCommand;
+import com.hampcoders.glottia.platform.api.venue.interfaces.rest.resources.UpdatePartnerResource;
 
 /**
  * Assembler para convertir UpdatePartnerResource a UpdatePartnerCommand.

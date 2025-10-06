@@ -1,13 +1,14 @@
-package com.hampcoders.glottia.platform.api.partner.application.internal.queryservices;
+package com.hampcoders.glottia.platform.api.venue.application.internal.queryservices;
 
-import com.hampcoders.glottia.platform.api.partner.domain.model.aggregates.Partner;
-import com.hampcoders.glottia.platform.api.partner.domain.model.entities.TableVenue;
-import com.hampcoders.glottia.platform.api.partner.domain.model.entities.Venue;
-import com.hampcoders.glottia.platform.api.partner.domain.model.queries.*;
-import com.hampcoders.glottia.platform.api.partner.domain.services.PartnerQueryService;
-import com.hampcoders.glottia.platform.api.partner.infrastructure.persistence.jpa.repositories.PartnerRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import com.hampcoders.glottia.platform.api.venue.domain.model.aggregates.Partner;
+import com.hampcoders.glottia.platform.api.venue.domain.model.entities.TableVenue;
+import com.hampcoders.glottia.platform.api.venue.domain.model.entities.Venue;
+import com.hampcoders.glottia.platform.api.venue.domain.model.queries.*;
+import com.hampcoders.glottia.platform.api.venue.domain.services.PartnerQueryService;
+import com.hampcoders.glottia.platform.api.venue.infrastructure.persistence.jpa.repositories.PartnerRepository;
 
 import java.util.Collections;
 import java.util.List;

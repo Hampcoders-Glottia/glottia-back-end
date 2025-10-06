@@ -1,6 +1,5 @@
-package com.hampcoders.glottia.platform.api.partner.domain.model.entities;
+package com.hampcoders.glottia.platform.api.venue.domain.model.entities;
 
-import com.hampcoders.glottia.platform.api.partner.domain.model.valueobjects.TableStatus;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
@@ -8,6 +7,8 @@ import lombok.Setter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+
+import com.hampcoders.glottia.platform.api.venue.domain.model.valueobjects.TableStatus;
 
 /**
  * Entidad de dominio. Representa un Local (cafetería, bar, etc.).

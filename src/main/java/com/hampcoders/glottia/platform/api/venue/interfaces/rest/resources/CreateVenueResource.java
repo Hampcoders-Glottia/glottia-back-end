@@ -1,4 +1,4 @@
-package com.hampcoders.glottia.platform.api.partner.interfaces.rest.resources;
+package com.hampcoders.glottia.platform.api.venue.interfaces.rest.resources;
 
 import java.util.List;
 

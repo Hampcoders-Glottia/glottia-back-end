@@ -1,4 +1,4 @@
-package com.hampcoders.glottia.platform.api.partner.domain.exceptions;
+package com.hampcoders.glottia.platform.api.venue.domain.exceptions;
 
 /**
  * Excepción de dominio lanzada cuando se intenta crear un Partner duplicado.

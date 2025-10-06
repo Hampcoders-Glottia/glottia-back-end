@@ -1,18 +1,19 @@
-package com.hampcoders.glottia.platform.api.partner.interfaces.rest;
+package com.hampcoders.glottia.platform.api.venue.interfaces.rest;
 
-import com.hampcoders.glottia.platform.api.partner.domain.model.queries.GetAllPartnersQuery;
-import com.hampcoders.glottia.platform.api.partner.domain.model.queries.GetPartnerByIdQuery;
-import com.hampcoders.glottia.platform.api.partner.domain.model.queries.GetPartnerByUserIdQuery;
-import com.hampcoders.glottia.platform.api.partner.domain.services.PartnerCommandService;
-import com.hampcoders.glottia.platform.api.partner.domain.services.PartnerQueryService;
-import com.hampcoders.glottia.platform.api.partner.interfaces.rest.resources.*;
-import com.hampcoders.glottia.platform.api.partner.interfaces.rest.transform.*;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
+import com.hampcoders.glottia.platform.api.venue.domain.model.queries.GetAllPartnersQuery;
+import com.hampcoders.glottia.platform.api.venue.domain.model.queries.GetPartnerByIdQuery;
+import com.hampcoders.glottia.platform.api.venue.domain.model.queries.GetPartnerByUserIdQuery;
+import com.hampcoders.glottia.platform.api.venue.domain.services.PartnerCommandService;
+import com.hampcoders.glottia.platform.api.venue.domain.services.PartnerQueryService;
+import com.hampcoders.glottia.platform.api.venue.interfaces.rest.resources.*;
+import com.hampcoders.glottia.platform.api.venue.interfaces.rest.transform.*;
 
 import java.util.List;
 import java.util.stream.Collectors;

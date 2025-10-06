@@ -1,4 +1,4 @@
-package com.hampcoders.glottia.platform.api.partner.domain.model.queries;
+package com.hampcoders.glottia.platform.api.venue.domain.model.queries;
 
 /**
  * Consulta para obtener un Venue por su ID.

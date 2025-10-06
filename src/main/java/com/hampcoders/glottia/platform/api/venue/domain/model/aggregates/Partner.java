@@ -1,6 +1,5 @@
-package com.hampcoders.glottia.platform.api.partner.domain.model.aggregates;
+package com.hampcoders.glottia.platform.api.venue.domain.model.aggregates;
 
-import com.hampcoders.glottia.platform.api.partner.domain.model.entities.Venue;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
@@ -8,6 +7,8 @@ import lombok.Setter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+
+import com.hampcoders.glottia.platform.api.venue.domain.model.entities.Venue;
 
 /**
  * Aggregate Root para el Bounded Context Partner.

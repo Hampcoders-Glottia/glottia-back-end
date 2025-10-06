@@ -1,14 +1,15 @@
-package com.hampcoders.glottia.platform.api.partner.domain.model.entities;
+package com.hampcoders.glottia.platform.api.venue.domain.model.entities;
 
-import com.hampcoders.glottia.platform.api.partner.domain.model.valueobjects.MinimumConsumption;
-import com.hampcoders.glottia.platform.api.partner.domain.model.valueobjects.TableCapacity;
-import com.hampcoders.glottia.platform.api.partner.domain.model.valueobjects.TableStatus;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 
 import java.time.LocalTime;
 import java.util.Objects;
+
+import com.hampcoders.glottia.platform.api.venue.domain.model.valueobjects.MinimumConsumption;
+import com.hampcoders.glottia.platform.api.venue.domain.model.valueobjects.TableCapacity;
+import com.hampcoders.glottia.platform.api.venue.domain.model.valueobjects.TableStatus;
 
 /**
  * Entidad de dominio. Es parte del agregado Partner a través de Venue.

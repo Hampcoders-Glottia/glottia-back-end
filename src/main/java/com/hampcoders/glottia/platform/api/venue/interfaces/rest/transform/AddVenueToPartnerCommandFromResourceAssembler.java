@@ -1,15 +1,15 @@
-package com.hampcoders.glottia.platform.api.partner.interfaces.rest.transform;
-
-import com.hampcoders.glottia.platform.api.partner.domain.model.commands.AddVenueToPartnerCommand;
-import com.hampcoders.glottia.platform.api.partner.domain.model.entities.TableVenue;
-import com.hampcoders.glottia.platform.api.partner.domain.model.valueobjects.MinimumConsumption;
-import com.hampcoders.glottia.platform.api.partner.domain.model.valueobjects.TableCapacity;
-import com.hampcoders.glottia.platform.api.partner.interfaces.rest.resources.AddVenueToPartnerResource;
-import com.hampcoders.glottia.platform.api.partner.interfaces.rest.resources.CreateTableResource;
+package com.hampcoders.glottia.platform.api.venue.interfaces.rest.transform;
 
 import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
+
+import com.hampcoders.glottia.platform.api.venue.domain.model.commands.AddVenueToPartnerCommand;
+import com.hampcoders.glottia.platform.api.venue.domain.model.entities.TableVenue;
+import com.hampcoders.glottia.platform.api.venue.domain.model.valueobjects.MinimumConsumption;
+import com.hampcoders.glottia.platform.api.venue.domain.model.valueobjects.TableCapacity;
+import com.hampcoders.glottia.platform.api.venue.interfaces.rest.resources.AddVenueToPartnerResource;
+import com.hampcoders.glottia.platform.api.venue.interfaces.rest.resources.CreateTableResource;
 
 /**
  * Assembler para convertir AddVenueToPartnerResource a AddVenueToPartnerCommand.

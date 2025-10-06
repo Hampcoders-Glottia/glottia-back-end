@@ -1,8 +1,9 @@
-package com.hampcoders.glottia.platform.api.partner.infrastructure.persistence.jpa.repositories;
+package com.hampcoders.glottia.platform.api.venue.infrastructure.persistence.jpa.repositories;
 
-import com.hampcoders.glottia.platform.api.partner.domain.model.aggregates.Partner;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
+
+import com.hampcoders.glottia.platform.api.venue.domain.model.aggregates.Partner;
 
 import java.util.List;
 import java.util.Optional;

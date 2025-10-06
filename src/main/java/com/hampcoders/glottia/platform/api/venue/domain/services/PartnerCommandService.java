@@ -1,9 +1,9 @@
-package com.hampcoders.glottia.platform.api.partner.domain.services;
-
-import com.hampcoders.glottia.platform.api.partner.domain.model.aggregates.Partner;
-import com.hampcoders.glottia.platform.api.partner.domain.model.commands.*;
+package com.hampcoders.glottia.platform.api.venue.domain.services;
 
 import java.util.Optional;
+
+import com.hampcoders.glottia.platform.api.venue.domain.model.aggregates.Partner;
+import com.hampcoders.glottia.platform.api.venue.domain.model.commands.*;
 
 /**
  * Servicio de dominio para procesar comandos relacionados con Partner.

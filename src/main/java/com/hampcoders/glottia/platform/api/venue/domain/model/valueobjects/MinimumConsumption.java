@@ -1,4 +1,4 @@
-package com.hampcoders.glottia.platform.api.partner.domain.model.valueobjects;
+package com.hampcoders.glottia.platform.api.venue.domain.model.valueobjects;
 
 import jakarta.persistence.Embeddable;
 import jakarta.validation.constraints.NotNull;

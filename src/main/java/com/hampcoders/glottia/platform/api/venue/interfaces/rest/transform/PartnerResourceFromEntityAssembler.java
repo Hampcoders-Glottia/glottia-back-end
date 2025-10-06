@@ -1,13 +1,13 @@
-package com.hampcoders.glottia.platform.api.partner.interfaces.rest.transform;
-
-import com.hampcoders.glottia.platform.api.partner.domain.model.aggregates.Partner;
-import com.hampcoders.glottia.platform.api.partner.domain.model.entities.TableVenue;
-import com.hampcoders.glottia.platform.api.partner.domain.model.entities.Venue;
-import com.hampcoders.glottia.platform.api.partner.interfaces.rest.resources.PartnerResource;
-import com.hampcoders.glottia.platform.api.partner.interfaces.rest.resources.TableResource;
-import com.hampcoders.glottia.platform.api.partner.interfaces.rest.resources.VenueResource;
+package com.hampcoders.glottia.platform.api.venue.interfaces.rest.transform;
 
 import java.util.stream.Collectors;
+
+import com.hampcoders.glottia.platform.api.venue.domain.model.aggregates.Partner;
+import com.hampcoders.glottia.platform.api.venue.domain.model.entities.TableVenue;
+import com.hampcoders.glottia.platform.api.venue.domain.model.entities.Venue;
+import com.hampcoders.glottia.platform.api.venue.interfaces.rest.resources.PartnerResource;
+import com.hampcoders.glottia.platform.api.venue.interfaces.rest.resources.TableResource;
+import com.hampcoders.glottia.platform.api.venue.interfaces.rest.resources.VenueResource;
 
 /**
      * Assembler para transformar la entidad de Dominio Partner a PartnerResource.

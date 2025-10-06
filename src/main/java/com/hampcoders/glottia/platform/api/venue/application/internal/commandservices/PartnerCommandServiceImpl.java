@@ -1,18 +1,18 @@
-package com.hampcoders.glottia.platform.api.partner.application.internal.commandservices;
-
-import com.hampcoders.glottia.platform.api.partner.domain.model.aggregates.Partner;
-import com.hampcoders.glottia.platform.api.partner.domain.model.commands.*;
-import com.hampcoders.glottia.platform.api.partner.domain.model.entities.TableVenue;
-import com.hampcoders.glottia.platform.api.partner.domain.model.entities.Venue;
-import com.hampcoders.glottia.platform.api.partner.domain.model.valueobjects.MinimumConsumption;
-import com.hampcoders.glottia.platform.api.partner.domain.model.valueobjects.TableCapacity;
-import com.hampcoders.glottia.platform.api.partner.domain.services.PartnerCommandService;
-import com.hampcoders.glottia.platform.api.partner.domain.exceptions.PartnerNotFoundException;
-import com.hampcoders.glottia.platform.api.partner.domain.exceptions.VenueNotFoundException;
-import com.hampcoders.glottia.platform.api.partner.infrastructure.persistence.jpa.repositories.PartnerRepository;
+package com.hampcoders.glottia.platform.api.venue.application.internal.commandservices;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import com.hampcoders.glottia.platform.api.venue.domain.exceptions.PartnerNotFoundException;
+import com.hampcoders.glottia.platform.api.venue.domain.exceptions.VenueNotFoundException;
+import com.hampcoders.glottia.platform.api.venue.domain.model.aggregates.Partner;
+import com.hampcoders.glottia.platform.api.venue.domain.model.commands.*;
+import com.hampcoders.glottia.platform.api.venue.domain.model.entities.TableVenue;
+import com.hampcoders.glottia.platform.api.venue.domain.model.entities.Venue;
+import com.hampcoders.glottia.platform.api.venue.domain.model.valueobjects.MinimumConsumption;
+import com.hampcoders.glottia.platform.api.venue.domain.model.valueobjects.TableCapacity;
+import com.hampcoders.glottia.platform.api.venue.domain.services.PartnerCommandService;
+import com.hampcoders.glottia.platform.api.venue.infrastructure.persistence.jpa.repositories.PartnerRepository;
 
 import java.util.Optional;
 
@@ -210,8 +210,8 @@ public class PartnerCommandServiceImpl implements PartnerCommandService {
                 .orElseThrow(() -> new IllegalArgumentException("Table con ID " + command.tableId() + " no encontrada."));
 
         // 4. Delegar la actualización de estado a la entidad Table
-        com.hampcoders.glottia.platform.api.partner.domain.model.valueobjects.TableStatus newStatus =
-                com.hampcoders.glottia.platform.api.partner.domain.model.valueobjects.TableStatus.valueOf(command.newStatus());
+        com.hampcoders.glottia.platform.api.venue.domain.model.valueobjects.TableStatus newStatus =
+                com.hampcoders.glottia.platform.api.venue.domain.model.valueobjects.TableStatus.valueOf(command.newStatus());
         table.updateStatus(newStatus);
 
         // 5. Persistir el agregado completo

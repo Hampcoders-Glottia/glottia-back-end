@@ -1,4 +1,4 @@
-package com.hampcoders.glottia.platform.api.partner.domain.model.commands;
+package com.hampcoders.glottia.platform.api.venue.domain.model.commands;
 
 /**
  * Comando para eliminar un Partner.

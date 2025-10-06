@@ -1,4 +1,4 @@
-package com.hampcoders.glottia.platform.api.partner.domain.model.commands;
+package com.hampcoders.glottia.platform.api.venue.domain.model.commands;
 
 /**
  * Comando mejorado para actualizar el estado de una Table.
