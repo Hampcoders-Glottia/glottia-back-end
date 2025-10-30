@@ -12,12 +12,12 @@ import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 
 @Getter
-@Entity
+@Entity(name = "attendances")
 public class Attendance extends AuditableModel { 
 
-     @Id
-     @GeneratedValue(strategy = GenerationType.IDENTITY)
-     private Long id; // ID propio de la entidad Attendance
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id; // ID propio de la entidad Attendance
 
     @ManyToOne(fetch = FetchType.LAZY) // Evita cargar Encounter innecesariamente
     @JoinColumn(name = "encounter_id")
@@ -30,10 +30,16 @@ public class Attendance extends AuditableModel {
     @Enumerated(EnumType.STRING)
     private AttendanceStatus status;
 
+    @Column(name = "reserved_at", nullable = false)
     private LocalDateTime reservedAt;
+    
+    @Column(name = "checked_in_at", nullable = true)
     private LocalDateTime checkedInAt;
-    private Integer pointsAwarded = 0;
-     private Integer pointsPenalized = 0; // Para registrar la penalización
+
+    @Column(name = "points_awarded", nullable = false)
+    private Integer pointsAwarded = 0;  
+    
+    private Integer pointsPenalized = 0; // Para registrar la penalización
 
     protected Attendance() {}
 
