@@ -26,20 +26,28 @@ public class Encounter extends AuditableAbstractAggregateRoot<Encounter> {
     @AttributeOverride(name = "tableId", column = @Column(name = "table_id"))
     private TableId tableId;
 
+    @Column(name = "topic", nullable = false)
     private String topic;
 
-    @Enumerated(EnumType.STRING)
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "language_id", referencedColumnName = "id", nullable = false)
     private Language language;
 
-    @Enumerated(EnumType.STRING)
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "cefr_level_id", referencedColumnName = "id", nullable = false)
     private CEFRLevel level;
 
+    @Column(name = "scheduled_at", nullable = false)
     private LocalDateTime scheduledAt;
 
-    @Enumerated(EnumType.STRING)
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "encounter_status_id", referencedColumnName = "id", nullable = false)
     private EncounterStatus status;
 
+    @Column(name = "min_capacity", nullable = false)
     private final Integer minCapacity = 4;
+
+    @Column(name = "max_capacity", nullable = false)
     private final Integer maxCapacity = 6;
 
     @Embedded
@@ -73,7 +81,7 @@ public class Encounter extends AuditableAbstractAggregateRoot<Encounter> {
         this.tableId = tableId;
      }
 
-    public Attendance join(LearnerId learnerId) {
+    public void join(LearnerId learnerId) {
         if (this.status != EncounterStatus.PUBLISHED && this.status != EncounterStatus.READY) {
             throw new IllegalStateException("Cannot join encounter if it's not PUBLISHED or READY");
         }
@@ -84,7 +92,7 @@ public class Encounter extends AuditableAbstractAggregateRoot<Encounter> {
         if (attendances.hasLearner(learnerId)) {
              throw new IllegalStateException("Learner already joined this encounter");
         }
-        Attendance newAttendance = this.attendances.addItem(this, learnerId);
+        this.attendances.addItem(this, learnerId);
         // Podrías emitir evento LearnerJoinedEncounterEvent aquí si usas eventos de dominio
         if (attendances.getConfirmedCount() >= minCapacity && this.status == EncounterStatus.PUBLISHED) {
              this.status = EncounterStatus.READY;
@@ -93,7 +101,6 @@ public class Encounter extends AuditableAbstractAggregateRoot<Encounter> {
          if (attendances.getConfirmedCount() == maxCapacity) {
              // Podrías emitir evento EncounterCapacityReachedEvent aquí
          }
-        return newAttendance;
     }
 
     public void checkIn(LearnerId learnerId) {
