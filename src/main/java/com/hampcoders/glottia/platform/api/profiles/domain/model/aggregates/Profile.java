@@ -46,7 +46,7 @@ public class Profile extends AuditableAbstractAggregateRoot<Profile> {
     private String email;
 
     @OneToOne(fetch = FetchType.EAGER)
-    @JoinColumn(name = "status_id", nullable = false)
+    @JoinColumn(name = "business_role_id", nullable = false)
     private BusinessRole businessRole;
 
     // Profile can be either a Learner or a Partner, but not both
