@@ -28,16 +28,12 @@ public class AttendanceList {
         return Collections.unmodifiableList(items); // Devuelve copia inmutable
     }
 
-    public Attendance addItem(Encounter encounter, LearnerId learnerId) {
-        Attendance attendance = new Attendance(encounter, learnerId);
-        this.items.add(attendance);
-        return attendance;
+    public void addItem(Encounter encounter, LearnerId learnerId) {
+        this.items.add(new Attendance(encounter, learnerId));
     }
 
     public boolean hasLearner(LearnerId learnerId) {
-        return items.stream()
-                .anyMatch(item -> item.getLearnerId().equals(learnerId) &&
-                                 (item.getStatus() == AttendanceStatus.RESERVED || item.getStatus() == AttendanceStatus.CHECKED_IN)); // Solo contar activos
+        return items.stream().anyMatch(item -> item.getLearnerId().equals(learnerId) && (item.getStatus() == AttendanceStatus.RESERVED || item.getStatus() == AttendanceStatus.CHECKED_IN)); // Solo contar activos
     }
 
     public Optional<Attendance> findByLearnerId(LearnerId learnerId) {
