@@ -10,7 +10,6 @@ import com.hampcoders.glottia.platform.api.profiles.domain.model.entities.Learne
 @Repository
 public interface LearnerLanguageItemRepository extends JpaRepository<LearnerLanguageItem, Long> {
     List<LearnerLanguageItem> findByLearnerId(Long learnerId);
-    List<LearnerLanguageItem> findByLearnerProfileId(Long profileId);
     List<LearnerLanguageItem> findByLanguageId(Long languageId);
     List<LearnerLanguageItem> findByLearnerIdAndIsLearning(Long learnerId, boolean isLearning);
 }

@@ -1,6 +1,8 @@
 package com.hampcoders.glottia.platform.api.profiles.infrastructure.persistence.jpa.repository;
 
 import com.hampcoders.glottia.platform.api.profiles.domain.model.aggregates.Profile;
+import com.hampcoders.glottia.platform.api.profiles.domain.model.entities.Learner;
+import com.hampcoders.glottia.platform.api.profiles.domain.model.entities.Partner;
 import com.hampcoders.glottia.platform.api.profiles.domain.model.valueobjects.BusinessRoles;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -24,5 +26,10 @@ public interface ProfileRepository extends JpaRepository<Profile, Long> {
     Optional<Profile> findByEmail(String email);
     List<Profile> findByAge(int age);
     List<Profile> findByBusinessRole(BusinessRoles businessRole);
-    Optional<Profile> findByUserId(String userId);
+    
+    @Query("SELECT p.learner FROM Profile p WHERE p.id = :profileId AND p.learner IS NOT NULL")
+    Optional<Learner> findLearnerByProfileId(@Param("profileId") Long profileId);
+    
+    @Query("SELECT p.partner FROM Profile p WHERE p.id = :profileId AND p.partner IS NOT NULL")
+    Optional<Partner> findPartnerByProfileId(@Param("profileId") Long profileId);
 }

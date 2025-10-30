@@ -9,7 +9,6 @@ import java.util.Optional;
 
 @Repository
 public interface PartnerRepository extends JpaRepository<Partner, Long> {
-    Optional<Partner> findByProfileId(Long profileId);
     Optional<Partner> findByTaxId(String taxId);
     Optional<Partner> findByBusinessNameIgnoreCase(String businessName);
     List<Partner> findBySubscriptionStatusId(Long subscriptionStatusId);

@@ -6,6 +6,8 @@ import com.hampcoders.glottia.platform.api.profiles.domain.model.queries.*;
 import com.hampcoders.glottia.platform.api.profiles.domain.services.LearnerQueryService;
 import com.hampcoders.glottia.platform.api.profiles.infrastructure.persistence.jpa.repository.LearnerLanguageItemRepository;
 import com.hampcoders.glottia.platform.api.profiles.infrastructure.persistence.jpa.repository.LearnerRepository;
+import com.hampcoders.glottia.platform.api.profiles.infrastructure.persistence.jpa.repository.ProfileRepository;
+
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -16,10 +18,13 @@ public class LearnerQueryServiceImpl implements LearnerQueryService {
 
     private final LearnerRepository learnerRepository;
     private final LearnerLanguageItemRepository learnerLanguageItemRepository;
+    private final ProfileRepository profileRepository;
 
-    public LearnerQueryServiceImpl(LearnerRepository learnerRepository, LearnerLanguageItemRepository learnerLanguageItemRepository) {
+    public LearnerQueryServiceImpl(LearnerRepository learnerRepository, LearnerLanguageItemRepository learnerLanguageItemRepository, ProfileRepository profileRepository) {
         this.learnerRepository = learnerRepository;
         this.learnerLanguageItemRepository = learnerLanguageItemRepository;
+        this.profileRepository = profileRepository;
+
     }
 
     @Override
@@ -34,7 +39,7 @@ public class LearnerQueryServiceImpl implements LearnerQueryService {
 
     @Override
     public Optional<Learner> handle(GetLearnerByProfileIdQuery query) {
-        return this.learnerRepository.findByProfileId(query.profileId());
+        return this.profileRepository.findLearnerByProfileId(query.profileId());
     }
 
     @Override
@@ -55,7 +60,7 @@ public class LearnerQueryServiceImpl implements LearnerQueryService {
 
     @Override
     public List<LearnerLanguageItem> handle(GetLearnerLanguageItemsByProfileIdQuery query) {
-        return this.learnerLanguageItemRepository.findByLearnerProfileId(query.profileId());
+        return List.of(); 
     }
 
     @Override

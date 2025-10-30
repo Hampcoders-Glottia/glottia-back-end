@@ -12,10 +12,9 @@ import java.util.Optional;
 
 @Repository
 public interface LearnerRepository extends JpaRepository<Learner, Long> {
-    Optional<Learner> findByProfileId(Long profileId);
     List<Learner> findByCityIgnoreCase(String city);
     List<Learner> findByCountryIgnoreCase(String country);
     
-    @Query("SELECT DISTINCT l FROM Learner l JOIN l.learnerLanguageItems lli WHERE lli.language.id = :languageId")
+    @Query("SELECT DISTINCT l FROM Learner l JOIN l.learnerLanguages.learnerLanguageItems lli WHERE lli.language.id = :languageId")
     List<Learner> findByLearnerLanguageItemsLanguageId(@Param("languageId") Long languageId);
 }

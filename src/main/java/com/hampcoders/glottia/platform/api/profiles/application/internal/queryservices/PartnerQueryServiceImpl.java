@@ -22,9 +22,11 @@ import com.hampcoders.glottia.platform.api.profiles.infrastructure.persistence.j
 public class PartnerQueryServiceImpl implements PartnerQueryService {
 
     private final PartnerRepository partnerRepository;
+    private final ProfileRepository profileRepository;
 
-    public PartnerQueryServiceImpl(PartnerRepository partnerRepository) {
+    public PartnerQueryServiceImpl(PartnerRepository partnerRepository, ProfileRepository profileRepository) {
         this.partnerRepository = partnerRepository;
+        this.profileRepository = profileRepository;
     }
 
     @Override
@@ -41,7 +43,7 @@ public class PartnerQueryServiceImpl implements PartnerQueryService {
 
     @Override
     public Optional<Partner> handle(GetPartnerByProfileIdQuery query) {
-        return this.partnerRepository.findByProfileId(query.profileId());
+        return this.profileRepository.findPartnerByProfileId(query.profileId());
     }
 
     @Override
