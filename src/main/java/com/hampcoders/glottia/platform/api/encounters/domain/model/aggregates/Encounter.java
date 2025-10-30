@@ -11,12 +11,8 @@ import lombok.Getter;
 import java.time.LocalDateTime;
 
 @Getter
-@Entity
+@Entity(name = "encounters")
 public class Encounter extends AuditableAbstractAggregateRoot<Encounter> {
-
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
 
     @Embedded
     @AttributeOverride(name = "learnerId", column = @Column(name = "creator_id"))

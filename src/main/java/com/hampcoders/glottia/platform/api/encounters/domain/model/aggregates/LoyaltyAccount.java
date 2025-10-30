@@ -6,20 +6,23 @@ import jakarta.persistence.*;
 import lombok.Getter;
 
 @Getter
-@Entity
+@Entity(name = "loyalty_accounts")
 public class LoyaltyAccount extends AuditableAbstractAggregateRoot<LoyaltyAccount> { 
-
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
 
     @Embedded
     @AttributeOverride(name = "learnerId", column = @Column(name = "learner_id", unique = true))
     private LearnerId learnerId;
 
+    @Column(name = "points", nullable = false)
     private Integer points = 0;
-    private Integer encountersCreated = 0;
+
+    @Column(name = "encounters_created", nullable = false)
+    private Integer encountersCreated = 0;  
+
+    @Column(name = "encounters_attended", nullable = false)
     private Integer encountersAttended = 0;
+
+    @Column(name = "no_show_count", nullable = false)
     private Integer noShowCount = 0;
     // Podríamos agregar una lista de Badges si se manejan como entidades/VOs aquí
 
