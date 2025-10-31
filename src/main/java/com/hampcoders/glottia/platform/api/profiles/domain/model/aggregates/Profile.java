@@ -1,11 +1,13 @@
 package com.hampcoders.glottia.platform.api.profiles.domain.model.aggregates;
 
+import java.util.Optional;
+
 import com.hampcoders.glottia.platform.api.profiles.domain.model.commands.CreateProfileCommand;
 import com.hampcoders.glottia.platform.api.profiles.domain.model.commands.UpdateProfileCommand;
 import com.hampcoders.glottia.platform.api.profiles.domain.model.entities.BusinessRole;
 import com.hampcoders.glottia.platform.api.profiles.domain.model.entities.Learner;
 import com.hampcoders.glottia.platform.api.profiles.domain.model.entities.Partner;
-import com.hampcoders.glottia.platform.api.profiles.domain.model.entities.SubscriptionStatus;
+import com.hampcoders.glottia.platform.api.profiles.domain.model.valueobjects.Address;
 import com.hampcoders.glottia.platform.api.shared.domain.model.aggregates.AuditableAbstractAggregateRoot;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.Max;
@@ -111,7 +113,7 @@ public class Profile extends AuditableAbstractAggregateRoot<Profile> {
             throw new IllegalStateException("Cannot assign Learner. Profile is already assigned as Partner.");
         }
         // FIX: Create the Learner entity here
-        Learner newLearner = new Learner(street, number, city, postalCode, country, latitude, longitude);
+        Learner newLearner = new Learner(new Address(street, number, city, postalCode, country, latitude, longitude));
         this.learner = newLearner;
     }
     
@@ -181,30 +183,14 @@ public class Profile extends AuditableAbstractAggregateRoot<Profile> {
     }
 
     /**
-     * Gets the primary language from learner's languages (if learner), otherwise null
-     */
-    public String getLanguage() {
-        // TODO: Implement language management for learners
-        return null;
-    }
-
-    /**
-     * Gets the primary level from learner's languages (if learner), otherwise null
-     */
-    public String getLevel() {
-        // TODO: Implement CEFR level management for learners
-        return null;
-    }
-
-    /**
      * Gets the country from learner's address if learner, otherwise null
      * Partners don't manage addresses as they represent business relationships
      */
-    public String getCountry() {
+    public Optional<String> getCountry() {
         if (this.learner != null) {
-            return this.learner.getCountry();
+            return Optional.ofNullable(this.learner.getAddress().country());
         }
-        return null;
+        return Optional.empty();
     }
 
 }
