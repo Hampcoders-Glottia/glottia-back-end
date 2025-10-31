@@ -2,120 +2,101 @@ package com.hampcoders.glottia.platform.api.profiles.domain.model.entities;
 
 import java.util.List;
 
+import com.hampcoders.glottia.platform.api.profiles.domain.model.commands.CreateLearnerCommand;
+import com.hampcoders.glottia.platform.api.profiles.domain.model.valueobjects.Address;
 import com.hampcoders.glottia.platform.api.profiles.domain.model.valueobjects.LearnerLanguage;
-import jakarta.persistence.*;
+import com.hampcoders.glottia.platform.api.shared.domain.model.entities.AuditableModel;
+
+import jakarta.persistence.Embedded;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
 import lombok.Getter;
 
-@Entity
 @Getter
+@Entity
 @Table(name = "learners")
-public class Learner {
+public class Learner extends AuditableModel {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // Address information
-    @Column(name = "street")
-    private String street;
-
-    @Column(name = "number")
-    private String number;
-
-    @Column(name = "city")
-    private String city;
-
-    @Column(name = "postal_code")
-    private String postalCode;
-
-    @Column(name = "country")
-    private String country;
-
-    @Column(name = "latitude")
-    private Float latitude;
-
-    @Column(name = "longitude")
-    private Float longitude;
+    @Embedded
+    private Address address;
 
     @Embedded
-    private final LearnerLanguage learnerLanguages;
+    private final LearnerLanguage learnerLanguage;
 
-    // Constructor
-    public Learner() {
-        this.learnerLanguages = new LearnerLanguage();
+    protected Learner() {
+        this.learnerLanguage = new LearnerLanguage();
     }
-   
     
-    public Learner(String street, String number, String city, String postalCode, 
-                   String country, Float latitude, Float longitude) {
-        this.street = street;
-        this.number = number;
-        this.city = city;
-        this.postalCode = postalCode;
-        this.country = country;
-        this.latitude = latitude;
-        this.longitude = longitude;
-        this.learnerLanguages = new LearnerLanguage();
+    public Learner(CreateLearnerCommand command) {
+        this();
+        this.address = command.address();
     }
 
-    // Update address information
-    public void updateAddress(String street, String number, String city, 
-                             String postalCode, String country, Float latitude, Float longitude) {
-        this.street = street;
-        this.number = number;
-        this.city = city;
-        this.postalCode = postalCode;
-        this.country = country;
-        this.latitude = latitude;
-        this.longitude = longitude;
+    public Learner(Address address) {
+        this.address = address;
+        this.learnerLanguage = new LearnerLanguage();   
     }
 
-    public String getFullAddress() {
-        return String.format("%s %s, %s, %s %s", 
-            street != null ? street : "",
-            number != null ? number : "",
-            city != null ? city : "",
-            postalCode != null ? postalCode : "",
-            country != null ? country : "").trim();
+    public void updateAddress(Address newAddress) {
+        this.address = newAddress;
     }
 
     public void addLanguage(Language language, CEFRLevel cefrLevel, boolean isLearning) {
-        this.learnerLanguages.addLanguages(List.of(new LearnerLanguageItem(this, language, cefrLevel, isLearning)));
+        this.learnerLanguage.addLanguage(this, language, cefrLevel, isLearning);
     }
 
-    public void addLanguages(List<LearnerLanguageItem> items) {
-        this.learnerLanguages.addLanguages(items);
+    public void addLanguages(List<LearnerLanguageItem> languageItems) {
+        this.learnerLanguage.addLanguages(languageItems);
+    }
+
+    public List<LearnerLanguageItem> getLanguages() {
+        return this.learnerLanguage.getLearnerLanguageItems();
     }
 
     public void removeLanguage(Language language) {
-        this.learnerLanguages.removeLanguage(language);
+        this.learnerLanguage.removeLanguage(language);
     }
 
     public void updateLanguageLevel(Language language, CEFRLevel newLevel) {
-        this.learnerLanguages.updateLanguageLevel(language, newLevel);
+        this.learnerLanguage.updateLanguageLevel(language, newLevel);
     }
 
     public void updateLanguageLearningStatus(Language language, boolean isLearning) {
-        this.learnerLanguages.updateLanguageLearningStatus(language, isLearning);
+        this.learnerLanguage.updateLanguageLearningStatus(language, isLearning);
     }
 
     public List<LearnerLanguageItem> getLearnerLanguageItems() {
-        return learnerLanguages.getLearnerLanguageItems();
+        return learnerLanguage.getLearnerLanguageItems();
+    }
+
+    public List<LearnerLanguageItem> getLanguageItemsByLevel(CEFRLevel level) {
+        return learnerLanguage.getLanguageItemsByLevel(level);
     }
 
     public List<Language> getKnownLanguages() {
-        return learnerLanguages.getKnownLanguages();
+        return learnerLanguage.getKnownLanguages();
     }
 
     public List<Language> getLanguagesCurrentlyLearning() {
-        return learnerLanguages.getLanguagesCurrentlyLearning();
+        return learnerLanguage.getLanguagesCurrentlyLearning();
     }
 
     public boolean hasLanguage(Language language) {
-        return learnerLanguages.hasLanguage(language);
+        return learnerLanguage.hasLanguage(language);
     }
 
     public int getTotalLanguages() {
-        return learnerLanguages.getTotalLanguages();
+        return learnerLanguage.getTotalLanguages();
+    }
+
+    public String getFullAddress() {
+        return this.address.toString();
     }
 }
