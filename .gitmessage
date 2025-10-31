@@ -1,0 +1,62 @@
+# <type>(<bounded-context>[:<layer>|:<scope>])!: <subject>
+#
+# TYPES — choose based on PURPOSE of the change, not the file modified:
+#   feat      → new business capability (was not possible before)
+#   fix       → bug fix (incorrect behavior → now correct)
+#   refactor  → code changes without altering behavior (cleanup, reorg)
+#   perf      → performance improvements (faster, less memory, less DB calls)
+#   docs      → documentation only (README, ADRs, API docs)
+#   test      → add or adjust tests only
+#   chore     → maintenance, config, scripts, formatting (no behavior change)
+#   build     → build system or dependencies (csproj, package.json, Dockerfile)
+#   ci        → continuous integration / pipeline changes
+#   revert    → revert a previous commit
+#
+# BOUNDED CONTEXTS (remove 'feature/' from branch name when using in commits):
+#   iam-bounded-context
+#   profiles-bounded-context
+#   venue-bounded-context
+#   encounters-bounded-context
+#
+# LAYERS (Layered Architecture):
+#   domain         → Entities, Value Objects, Domain Events, Aggregates
+#   application    → Use Cases, Command/Query Handlers, Application Events
+#   infrastructure → Persistence, Messaging, External Service Implementations
+#   interfaces     → API endpoints, Controllers, UI integration
+#
+# SUBJECT RULES:
+#   - Imperative mood (e.g., "add", "fix", "create" — NOT "added", "fixed")
+#   - ≤72 characters, no period at the end
+#   - Format: type(bc:layer): short description
+#   - Example: feat(assets-and-resources-management:domain): add AssetCreatedEvent
+#
+# BODY (optional but recommended for clarity):
+#   Context: what was wrong or missing
+#   Decision: what was changed and why
+#   Impact: risks, side effects, migrations
+#   Tests: coverage or verification steps
+#   - Wrap lines at ~100-120 characters
+#   - Leave one blank line between subject and body
+#
+# FOOTER (optional):
+#   - Closes #123  (issues this commit closes)
+#   - Relates-To #456 (related issues/tickets)
+#   - BREAKING CHANGE: describe the change and migration steps
+#
+# ------------------------------------------------------------------------
+# Example — Feature:
+# feat(assets-and-resources-management:application): handle stock threshold update
+#
+# Context: thresholds weren't recalculated when component type changed.
+# Decision: trigger recalculation in ComponentTypeUpdatedEventHandler.
+# Impact: consistent thresholds after type updates.
+# Tests: added unit specs for type change + threshold recompute.
+#
+# Closes #214
+#
+# Example — Refactor:
+# refactor(assets-and-resources-management:domain): align integration event records
+#
+# Context: naming and payloads inconsistent across asset events.
+# Decision: standardized event names, payload shape, and timestamp usage.
+# Impact: no behavior change, easier downstream consumption.
