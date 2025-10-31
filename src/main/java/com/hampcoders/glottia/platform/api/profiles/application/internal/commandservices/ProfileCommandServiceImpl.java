@@ -19,6 +19,7 @@ import com.hampcoders.glottia.platform.api.profiles.infrastructure.persistence.j
 import com.hampcoders.glottia.platform.api.profiles.infrastructure.persistence.jpa.repository.ProfileRepository;
 import com.hampcoders.glottia.platform.api.profiles.domain.services.BusinessRoleQueryService;
 import com.hampcoders.glottia.platform.api.profiles.domain.services.SubscriptionStatusQueryService;
+import com.hampcoders.glottia.platform.api.profiles.domain.model.valueobjects.Address;
 import com.hampcoders.glottia.platform.api.profiles.domain.model.valueobjects.BusinessRoles;
 import com.hampcoders.glottia.platform.api.iam.interfaces.acl.IamContextFacade;
 import org.springframework.stereotype.Service;
@@ -60,7 +61,7 @@ public class ProfileCommandServiceImpl implements ProfileCommandService {
         var profile = new Profile(command.firstName(),command.lastName(),command.age(), command.email(), businessRole);
 
         if(businessRole.getRole() == BusinessRoles.Learner) {
-            profile.assignAsLearner(new Learner(command.street(), command.number(), command.city(), command.postalCode(), command.country(), command.latitude(), command.longitude()));
+            profile.assignAsLearner(new Learner(new Address(command.street(), command.number(), command.city(), command.postalCode(), command.country(), command.latitude(), command.longitude())));
         } else if (businessRole.getRole() == BusinessRoles.Partner) {
             profile.assignAsPartner(new Partner(command.legalName(), command.businessName(), command.taxId(), command.contactEmail(), command.contactPhone(), command.contactPersonName(), command.description()));
         }
