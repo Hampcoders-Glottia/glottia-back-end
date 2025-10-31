@@ -9,14 +9,14 @@ import com.hampcoders.glottia.platform.api.profiles.interfaces.rest.resources.Ad
 public class LearnerResourceFromEntityAssembler {
 
     public static LearnerResource toResource(Learner entity) {
-        AddressResource addressResource = new AddressResource(
-            entity.getStreet(),
-            entity.getNumber(),
-            entity.getCity(),
-            entity.getPostalCode(),
-            entity.getCountry(),
-            entity.getLatitude(),
-            entity.getLongitude()
+        var addressResource = new AddressResource(
+            entity.getAddress().street(),
+            entity.getAddress().number(),
+            entity.getAddress().city(),
+            entity.getAddress().postalCode(),
+            entity.getAddress().country(),
+            entity.getAddress().latitude(),
+            entity.getAddress().longitude()
         );
 
         return new LearnerResource(

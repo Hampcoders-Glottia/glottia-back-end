@@ -44,13 +44,13 @@ public class LearnerCommandServiceImpl implements LearnerCommandService {
         
         // Assign as learner
         profile.assignAsLearner(
-            command.street(),
-            command.number(),
-            command.city(),
-            command.postalCode(),
-            command.country(),
-            command.latitude(),
-            command.longitude()
+            command.address().street(),
+            command.address().number(),
+            command.address().city(),
+            command.address().postalCode(),
+            command.address().country(),
+            command.address().latitude(),
+            command.address().longitude()
         );
         
         try {

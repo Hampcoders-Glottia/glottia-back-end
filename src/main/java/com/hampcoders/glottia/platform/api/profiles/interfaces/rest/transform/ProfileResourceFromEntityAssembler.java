@@ -1,10 +1,7 @@
 package com.hampcoders.glottia.platform.api.profiles.interfaces.rest.transform;
 
 import com.hampcoders.glottia.platform.api.profiles.domain.model.aggregates.Profile;
-import com.hampcoders.glottia.platform.api.profiles.domain.model.entities.Partner;
 import com.hampcoders.glottia.platform.api.profiles.interfaces.rest.resources.ProfileResource;
-import java.util.List;
-import java.util.stream.Collectors;
 
 public class ProfileResourceFromEntityAssembler {
 
@@ -29,11 +26,11 @@ public class ProfileResourceFromEntityAssembler {
             case Learner -> {
                 if (entity.getLearner() != null) {
                     info = entity.getLearner().getFullAddress();
-                    street = entity.getLearner().getStreet();
-                    number = entity.getLearner().getNumber();
-                    city = entity.getLearner().getCity();
-                    postalCode = entity.getLearner().getPostalCode();
-                    country = entity.getLearner().getCountry();
+                    street = entity.getLearner().getAddress().street();
+                    number = entity.getLearner().getAddress().number();
+                    city = entity.getLearner().getAddress().city();
+                    postalCode = entity.getLearner().getAddress().postalCode();
+                    country = entity.getLearner().getAddress().country();
                     learnerId = entity.getLearner().getId();
                 } else {
                     throw new IllegalStateException("Learner details are missing for profile ID: " + entity.getId());

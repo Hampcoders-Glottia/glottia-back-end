@@ -18,14 +18,12 @@ import com.hampcoders.glottia.platform.api.profiles.domain.model.commands.Remove
 import com.hampcoders.glottia.platform.api.profiles.domain.model.commands.UpdateLearnerLanguageCommand;
 import com.hampcoders.glottia.platform.api.profiles.domain.model.entities.BusinessRole;
 import com.hampcoders.glottia.platform.api.profiles.domain.model.queries.*;
-import com.hampcoders.glottia.platform.api.profiles.domain.model.valueobjects.BusinessRoles;
 import com.hampcoders.glottia.platform.api.profiles.domain.services.ProfileCommandService;
 import com.hampcoders.glottia.platform.api.profiles.domain.services.ProfileQueryService;
 import com.hampcoders.glottia.platform.api.profiles.domain.services.BusinessRoleQueryService;
 import com.hampcoders.glottia.platform.api.profiles.interfaces.rest.resources.*;
 import com.hampcoders.glottia.platform.api.profiles.interfaces.rest.transform.*;
 import com.hampcoders.glottia.platform.api.iam.interfaces.acl.IamContextFacade;
-import org.springframework.security.core.Authentication;
 
 import java.util.List;
 
@@ -40,8 +38,6 @@ public class ProfilesController {
 
     private final ProfileCommandService profileCommandService;
     private final ProfileQueryService profileQueryService;
-    private final BusinessRoleQueryService businessRoleQueryService;
-    private final IamContextFacade iamContextFacade;
 
     public ProfilesController(ProfileCommandService profileCommandService,
                              ProfileQueryService profileQueryService,
@@ -49,8 +45,6 @@ public class ProfilesController {
                              IamContextFacade iamContextFacade) {
         this.profileCommandService = profileCommandService;
         this.profileQueryService = profileQueryService;
-        this.businessRoleQueryService = businessRoleQueryService;
-        this.iamContextFacade = iamContextFacade;
     }
 
     /**
@@ -341,9 +335,8 @@ public class ProfilesController {
             var result = profileCommandService.handle(command);
             if (result.isPresent()) {
                 // Convert to resource (you'd need to create this assembler)
-                // var resource = LearnerLanguageItemResourceFromEntityAssembler.toResourceFromEntity(result.get());
-                // return ResponseEntity.status(HttpStatus.CREATED).body(resource);
-                return ResponseEntity.status(HttpStatus.CREATED).build(); // TODO: Return actual resource
+                var resource = LearnerLanguageItemResourceFromEntityAssembler.toResourceFromEntity(result.get());
+                return ResponseEntity.status(HttpStatus.CREATED).body(resource);
             } else {
                 return ResponseEntity.badRequest().build();
             }
@@ -414,10 +407,8 @@ public class ProfilesController {
             
             var result = profileCommandService.handle(command);
             if (result.isPresent()) {
-                // Convert to resource (you'd need to create this assembler)
-                // var resource = LearnerLanguageItemResourceFromEntityAssembler.toResourceFromEntity(result.get());
-                // return ResponseEntity.ok(resource);
-                return ResponseEntity.ok().build(); // TODO: Return actual resource
+                var resource = LearnerLanguageItemResourceFromEntityAssembler.toResourceFromEntity(result.get());
+                return ResponseEntity.ok(resource);
             } else {
                 return ResponseEntity.notFound().build();
             }

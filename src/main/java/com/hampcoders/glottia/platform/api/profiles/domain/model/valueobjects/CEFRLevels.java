@@ -1,5 +1,12 @@
 package com.hampcoders.glottia.platform.api.profiles.domain.model.valueobjects;
 
+/**
+ * Enumeration of CEFR language proficiency levels.
+ * @summary
+ * Each level is associated with a unique integer value.
+ * It can be used to standardize language proficiency representation across the system.
+ * @see IllegalArgumentException
+ */
 public enum CEFRLevels {
     A1(1),
     A2(2),
@@ -13,5 +20,18 @@ public enum CEFRLevels {
 
     CEFRLevels(int value) {
         this.value = value;
+    }
+
+    public int getValue() {
+        return value;
+    }
+
+    public static CEFRLevels fromValue(int value) {
+        for (CEFRLevels level : values()) {
+            if (level.value == value) {
+                return level;
+            }
+        }
+        throw new IllegalArgumentException("Invalid CEFRLevels value: " + value);
     }
 }

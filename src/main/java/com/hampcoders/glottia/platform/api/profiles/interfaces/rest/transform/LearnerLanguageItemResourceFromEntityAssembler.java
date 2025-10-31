@@ -5,7 +5,7 @@ import com.hampcoders.glottia.platform.api.profiles.interfaces.rest.resources.Le
 
 public class LearnerLanguageItemResourceFromEntityAssembler {
 
-    public static LearnerLanguageItemResource toResource(LearnerLanguageItem entity) {
+    public static LearnerLanguageItemResource toResourceFromEntity(LearnerLanguageItem entity) {
         return new LearnerLanguageItemResource(
             entity.getId(),
             entity.getLearner().getId(),
