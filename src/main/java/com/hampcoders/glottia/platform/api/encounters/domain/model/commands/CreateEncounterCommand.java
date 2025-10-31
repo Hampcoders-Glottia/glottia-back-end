@@ -7,7 +7,7 @@ public record CreateEncounterCommand(
     LearnerId creatorId, 
     VenueId venueId, 
     String topic, 
-    Language language, 
-    CEFRLevel level, 
+    String language, 
+    String cefrLevel, 
     LocalDateTime scheduledAt) {
 }
