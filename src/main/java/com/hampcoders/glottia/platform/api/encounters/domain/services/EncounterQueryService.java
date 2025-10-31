@@ -10,11 +10,11 @@ import java.util.Optional;
 public interface EncounterQueryService {
     Optional<Encounter> handle(GetEncounterByIdQuery query);
     List<Encounter> handle(SearchEncountersQuery query); // Considera paginación aquí
-    List<Encounter> handle(GetEncountersByCreatorQuery query);
+    List<Encounter> handle(GetAttendancesByLearnerIdAndAttendanceStatusIdQuery query);
     List<Encounter> handle(GetUpcomingEncountersForLearnerQuery query);
     List<Encounter> handle(GetEncountersRequiringAutoCheckQuery query); // Para el Scheduler
     List<Attendance> handle(GetAttendancesByEncounterQuery query);
-    List<Attendance> handle(GetAttendancesByLearnerQuery query);
+    List<Attendance> handle(GetEncountersByCreatorIdAndEncounterStatusIdQuery query);
     boolean handle(HasConflictingEncounterQuery query); // Devuelve boolean
     Optional<Object> handle(GetAttendanceStatsQuery query); // Devuelve estadísticas
 }
