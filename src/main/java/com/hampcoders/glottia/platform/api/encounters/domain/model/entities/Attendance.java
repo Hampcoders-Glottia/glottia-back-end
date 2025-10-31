@@ -25,79 +25,255 @@ public class Attendance extends AuditableModel {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id; // ID propio de la entidad Attendance
+    private Long id;
 
-    @ManyToOne(fetch = FetchType.LAZY) // Evita cargar Encounter innecesariamente
-    @JoinColumn(name = "encounter_id")
+    /**
+     * Reference to the encounter this attendance belongs to.
+     * Lazy loading to avoid unnecessary queries.
+     */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "encounter_id", nullable = false)
     private Encounter encounter;
 
+    /**
+     * Learner ID (Value Object from Profiles BC).
+     */
     @Embedded
-    @AttributeOverride(name = "learnerId", column = @Column(name = "learner_id"))
+    @AttributeOverride(name = "learnerId", column = @Column(name = "learner_id", nullable = false))
     private LearnerId learnerId;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "attendance_status_id")
+    /**
+     * Current attendance status (catalog entity).
+     */
+    @ManyToOne(fetch = FetchType.EAGER) // Eager porque casi siempre necesitamos el status
+    @JoinColumn(name = "attendance_status_id", nullable = false)
     private AttendanceStatus status;
 
+    /**
+     * Timestamp when the learner reserved their spot.
+     */
     @Column(name = "reserved_at", nullable = false)
     private LocalDateTime reservedAt;
-    
-    @Column(name = "checked_in_at", nullable = true)
+
+    /**
+     * Timestamp when the learner checked in (null if not checked in).
+     */
+    @Column(name = "checked_in_at")
     private LocalDateTime checkedInAt;
 
+    /**
+     * Points awarded for this attendance (e.g., +10 for check-in).
+     */
     @Column(name = "points_awarded", nullable = false)
-    private Integer pointsAwarded = 0;  
-    
-    private Integer pointsPenalized = 0; // Para registrar la penalización
+    private Integer pointsAwarded = 0;
 
+    /**
+     * Points penalized for this attendance (e.g., -15 for no-show, -5 for late cancel).
+     */
+    @Column(name = "points_penalized", nullable = false)
+    private Integer pointsPenalized = 0;
+
+    /**
+     * JPA constructor (protected).
+     */
     protected Attendance() {}
 
+    /**
+     * Create a new Attendance with RESERVED status.
+     * 
+     * @param encounter The encounter this attendance belongs to
+     * @param learnerId The learner's ID
+     */
     public Attendance(Encounter encounter, LearnerId learnerId) {
+        if (encounter == null) {
+            throw new IllegalArgumentException("Encounter cannot be null");
+        }
+        if (learnerId == null) {
+            throw new IllegalArgumentException("LearnerId cannot be null");
+        }
+
         this.encounter = encounter;
         this.learnerId = learnerId;
-        this.status = new AttendanceStatus(AttendanceStatuses.RESERVED);
+        this.status = AttendanceStatus.getDefaultAttendanceStatus(); // RESERVED
         this.reservedAt = LocalDateTime.now();
+        this.pointsAwarded = 0;
+        this.pointsPenalized = 0;
     }
 
+    // ==================== BUSINESS LOGIC (State Transitions) ====================
+
+    /**
+     * Mark attendance as checked-in.
+     * <p><strong>Business Rule:</strong> Can only check-in if status is RESERVED.</p>
+     * 
+     * @throws IllegalStateException if status is not RESERVED
+     */
     public void checkIn() {
-        // Regla 9: Check-in solo si status es RESERVED
-        if (this.status.getName() != AttendanceStatuses.RESERVED) {
-            throw new IllegalStateException("Attendance status must be RESERVED to check-in.");
+        if (!this.status.isReserved()) {
+            throw new IllegalStateException(
+                "Cannot check-in. Current status is " + this.status.getStringName() + 
+                ". Check-in is only allowed for RESERVED attendances."
+            );
         }
-        this.status = new AttendanceStatus(AttendanceStatuses.CHECKED_IN);
+
+        // Transition to CHECKED_IN
+        transitionTo(AttendanceStatuses.CHECKED_IN);
         this.checkedInAt = LocalDateTime.now();
-        // La lógica de otorgar puntos debería estar en el servicio/aggregate que orquesta
+        
+        // Note: Points are awarded by the service layer (LoyaltyAccount)
+        // This method only handles state transition
     }
 
+    /**
+     * Mark attendance as NO_SHOW.
+     * <p><strong>Business Rule:</strong> Can only mark as no-show if status is RESERVED.</p>
+     * <p>Called when encounter completes and learner didn't check in.</p>
+     * 
+     * @throws IllegalStateException if status is not RESERVED
+     */
     public void markAsNoShow() {
-        // Regla 7: Penalización solo si era RESERVED y NO hizo check-in
-        if (this.status.getName() != AttendanceStatuses.RESERVED) {
-             // Ya está checked-in, cancelado, o ya marcado como no-show
-            return; // O lanzar excepción si se quiere ser más estricto
+        if (!this.status.isReserved()) {
+            // Already checked-in, cancelled, or already marked as no-show
+            throw new IllegalStateException(
+                "Cannot mark as NO_SHOW. Current status is " + this.status.getStringName()
+            );
         }
-        this.status = new AttendanceStatus(AttendanceStatuses.NO_SHOW);
-        // La lógica de penalizar puntos debería estar en el servicio/aggregate
+
+        // Transition to NO_SHOW
+        transitionTo(AttendanceStatuses.NO_SHOW);
+        
+        // Note: Penalty is applied by the service layer (LoyaltyAccount)
     }
 
+    /**
+     * Cancel attendance.
+     * <p><strong>Business Rules:</strong></p>
+     * <ul>
+     *   <li>Cannot cancel if already CHECKED_IN, NO_SHOW, or CANCELLED</li>
+     *   <li>Late cancellation (< 24h before encounter) triggers penalty</li>
+     * </ul>
+     * 
+     * @param cancellationTime When the cancellation occurs
+     * @param encounterScheduledAt When the encounter is scheduled
+     * @throws IllegalStateException if status doesn't allow cancellation
+     */
     public void cancel(LocalDateTime cancellationTime, LocalDateTime encounterScheduledAt) {
-         if (this.status.getName() == AttendanceStatuses.CHECKED_IN || this.status.getName() == AttendanceStatuses.NO_SHOW || this.status.getName() == AttendanceStatuses.CANCELLED) {
-             throw new IllegalStateException("Cannot cancel attendance with status: " + this.status);
-         }
+        if (cancellationTime == null || encounterScheduledAt == null) {
+            throw new IllegalArgumentException("Cancellation time and encounter scheduled time cannot be null");
+        }
 
-         long hoursBefore = ChronoUnit.HOURS.between(cancellationTime, encounterScheduledAt);
-         this.status = new AttendanceStatus(AttendanceStatuses.CANCELLED);
+        // Validate current status allows cancellation
+        if (this.status.isCheckedIn()) {
+            throw new IllegalStateException("Cannot cancel attendance after check-in");
+        }
+        if (this.status.isNoShow()) {
+            throw new IllegalStateException("Cannot cancel attendance marked as NO_SHOW");
+        }
+        if (this.status.isCancelled()) {
+            throw new IllegalStateException("Attendance is already cancelled");
+        }
 
-         // Regla 11: Penalización si cancela < 24h antes
-         if (hoursBefore < 24) {
-             // La lógica de penalizar está en LoyaltyAccount, aquí solo marcamos el estado
-             // Se podría añadir un flag o devolver un valor para indicar la penalización
-         }
-         // Emitir AttendanceCancelledEvent
+        // Transition to CANCELLED
+        transitionTo(AttendanceStatuses.CANCELLED);
+
+        // Note: Penalty calculation is done by the service layer
+        // This method only handles state transition
     }
 
-     public boolean requiresLateCancellationPenalty(LocalDateTime cancellationTime, LocalDateTime encounterScheduledAt) {
-         return this.status.getName() == AttendanceStatuses.RESERVED &&
-                ChronoUnit.HOURS.between(cancellationTime, encounterScheduledAt) < 24;
-     }
+    /**
+     * Record points awarded (called by service layer after check-in).
+     * 
+     * @param points Points to award (must be positive)
+     */
+    public void recordPointsAwarded(Integer points) {
+        if (points == null || points < 0) {
+            throw new IllegalArgumentException("Points awarded must be non-negative");
+        }
+        this.pointsAwarded = points;
+    }
+
+    /**
+     * Record points penalized (called by service layer after no-show or late cancel).
+     * 
+     * @param points Points to penalize (must be positive, will be stored as positive value)
+     */
+    public void recordPointsPenalized(Integer points) {
+        if (points == null || points < 0) {
+            throw new IllegalArgumentException("Points penalized must be non-negative");
+        }
+        this.pointsPenalized = points;
+    }
+
+    // ==================== QUERY METHODS (No Mutation) ====================
+
+    /**
+     * Check if this attendance requires late cancellation penalty.
+     * <p><strong>Business Rule:</strong> Penalty if cancelled < 24 hours before encounter.</p>
+     * 
+     * @param cancellationTime When the cancellation occurred
+     * @param encounterScheduledAt When the encounter is scheduled
+     * @return true if penalty should be applied
+     */
+    public boolean requiresLateCancellationPenalty(LocalDateTime cancellationTime, LocalDateTime encounterScheduledAt) {
+        if (cancellationTime == null || encounterScheduledAt == null) {
+            return false;
+        }
+
+        // Only applies if status is CANCELLED and was previously RESERVED
+        if (!this.status.isCancelled()) {
+            return false;
+        }
+
+        long hoursBefore = ChronoUnit.HOURS.between(cancellationTime, encounterScheduledAt);
+        return hoursBefore < 24;
+    }
+
+    /**
+     * Check if this attendance is active (RESERVED or CHECKED_IN).
+     * 
+     * @return true if active
+     */
+    public boolean isActive() {
+        return this.status.isActive();
+    }
+
+    /**
+     * Check if learner has checked in.
+     * 
+     * @return true if status is CHECKED_IN
+     */
+    public boolean hasCheckedIn() {
+        return this.status.isCheckedIn();
+    }
+
+    /**
+     * Get the status name as enum.
+     * 
+     * @return AttendanceStatuses enum
+     */
+    public AttendanceStatuses getStatusName() {
+        return this.status.getName();
+    }
+
+    // ==================== PRIVATE HELPER METHODS ====================
+
+    /**
+     * Internal method to transition to a new status.
+     * Validates transition and creates new AttendanceStatus instance.
+     * 
+     * @param newStatus Target status
+     * @throws IllegalStateException if transition is not allowed
+     */
+    private void transitionTo(AttendanceStatuses newStatus) {
+        if (!this.status.canTransitionTo(newStatus)) {
+            throw new IllegalStateException(
+                String.format("Invalid status transition from %s to %s",
+                    this.status.getStringName(), newStatus.name())
+            );
+        }
+
+        // Create new status instance (immutability principle)
+        this.status = new AttendanceStatus(newStatus);
+    }
 
 }

@@ -67,10 +67,77 @@ public class AttendanceStatus {
     }
 
     /**
+     * Check if status is RESERVED.
+     * 
+     * @return true if status is RESERVED
+     */
+    public boolean isReserved() {
+        return AttendanceStatuses.RESERVED.equals(this.name);
+    }
+
+    /**
+     * Check if status is CHECKED_IN.
+     * 
+     * @return true if status is CHECKED_IN
+     */
+    public boolean isCheckedIn() {
+        return AttendanceStatuses.CHECKED_IN.equals(this.name);
+    }
+
+    /**
+     * Check if status is NO_SHOW.
+     * 
+     * @return true if status is NO_SHOW
+     */
+    public boolean isNoShow() {
+        return AttendanceStatuses.NO_SHOW.equals(this.name);
+    }
+
+    /**
+     * Check if status is CANCELLED.
+     * 
+     * @return true if status is CANCELLED
+     */
+    public boolean isCancelled() {
+        return AttendanceStatuses.CANCELLED.equals(this.name);
+    }
+
+    /**
+     * Check if status is active (RESERVED or CHECKED_IN).
+     * 
+     * @return true if status is active
+     */
+    public boolean isActive() {
+        return isReserved() || isCheckedIn();
+    }
+
+    /**
+     * Validate if transition to new status is allowed.
+     * 
+     * @param newStatus Target status
+     * @return true if transition is valid
+     */
+    public boolean canTransitionTo(AttendanceStatuses newStatus) {
+        if (newStatus == null) {
+            return false;
+        }
+
+        return switch (this.name) {
+            case RESERVED -> newStatus == AttendanceStatuses.CHECKED_IN ||
+                           newStatus == AttendanceStatuses.NO_SHOW ||
+                           newStatus == AttendanceStatuses.CANCELLED;
+            
+            case CHECKED_IN -> false; 
+            case NO_SHOW -> false; 
+            case CANCELLED -> false; 
+        };
+    }
+
+    /**
      * Get the default AttendanceStatus entity (RESERVED).
      * @return AttendanceStatus instance
      */
-    public static AttendanceStatus getDefaulAttendanceStatus() {
+    public static AttendanceStatus getDefaultAttendanceStatus() {
         return new AttendanceStatus(AttendanceStatuses.RESERVED);
     }
 
