@@ -2,6 +2,9 @@ package com.hampcoders.glottia.platform.api.encounters.domain.model.aggregates;
 
 import com.hampcoders.glottia.platform.api.encounters.domain.model.commands.CreateEncounterCommand;
 import com.hampcoders.glottia.platform.api.encounters.domain.model.entities.Attendance;
+import com.hampcoders.glottia.platform.api.encounters.domain.model.entities.CEFRLevel;
+import com.hampcoders.glottia.platform.api.encounters.domain.model.entities.EncounterStatus;
+import com.hampcoders.glottia.platform.api.encounters.domain.model.entities.Language;
 import com.hampcoders.glottia.platform.api.encounters.domain.model.valueobjects.*;
 
 import com.hampcoders.glottia.platform.api.shared.domain.model.aggregates.AuditableAbstractAggregateRoot;
@@ -10,8 +13,18 @@ import lombok.Getter;
 
 import java.time.LocalDateTime;
 
+
+/**
+ * Encounters aggregate root.
+ * @summary
+ * This class represents an Encounter aggregate root in the Glottia platform.
+ * It contains attributes and behaviors related to language learning encounters,
+ * including scheduling, status management, attendance tracking, and learner interactions.
+ * It extends AuditableAbstractAggregateRoot to inherit auditing properties.
+ */
 @Getter
-@Entity(name = "encounters")
+@Entity
+@Table(name = "encounters")
 public class Encounter extends AuditableAbstractAggregateRoot<Encounter> {
 
     @Embedded
@@ -55,7 +68,7 @@ public class Encounter extends AuditableAbstractAggregateRoot<Encounter> {
 
     protected Encounter() {
         this.attendances = new AttendanceList();
-        this.status = EncounterStatus.DRAFT;
+        this.status = EncounterStatus.getDefaultEncounterStatus();
     }
 
     public Encounter(CreateEncounterCommand command) {
@@ -67,47 +80,55 @@ public class Encounter extends AuditableAbstractAggregateRoot<Encounter> {
         this.venueId = command.venueId();     // Asignar venueId del comando
         // tableId se asignará después, tras la confirmación del Venue BC
         this.topic = command.topic();
-        this.language = command.language();
-        this.level = command.level();
+        this.language = new Language(Languages.valueOf(command.language()));
+        this.level = new CEFRLevel(CEFRLevels.valueOf(command.cefrLevel()));
         this.scheduledAt = command.scheduledAt();
         // El creador se une automáticamente
         this.join(this.creatorId);
     }
 
-     public void assignTable(TableId tableId) {
-        if (this.status != EncounterStatus.DRAFT) {
-             throw new IllegalStateException("Cannot assign table if status is not DRAFT");
+    // TODO: Implement updateEncounter method
+
+    public void assignTable(TableId tableId) {
+        if (this.status.getName() != EncounterStatuses.DRAFT) {
+            throw new IllegalStateException("Cannot assign table if status is not DRAFT");
         }
         this.tableId = tableId;
-     }
+    }
 
+    /**
+     * Learner joins the encounter.
+     * @throws IllegalStateException if the encounter is not PUBLISHED or READY,
+     * @param learnerId
+    */
     public void join(LearnerId learnerId) {
-        if (this.status != EncounterStatus.PUBLISHED && this.status != EncounterStatus.READY) {
+        if (!this.status.isPublished() && !this.status.isReady()) {
             throw new IllegalStateException("Cannot join encounter if it's not PUBLISHED or READY");
         }
         if (attendances.getConfirmedCount() >= maxCapacity) {
             throw new IllegalStateException("Encounter is full");
         }
-        // Valida si el learner ya está (regla 15)
         if (attendances.hasLearner(learnerId)) {
-             throw new IllegalStateException("Learner already joined this encounter");
+            throw new IllegalStateException("Learner already joined this encounter");
         }
+        
         this.attendances.addItem(this, learnerId);
-        // Podrías emitir evento LearnerJoinedEncounterEvent aquí si usas eventos de dominio
-        if (attendances.getConfirmedCount() >= minCapacity && this.status == EncounterStatus.PUBLISHED) {
-             this.status = EncounterStatus.READY;
-             // Podrías emitir evento EncounterReadyEvent aquí
+        
+        if (attendances.getConfirmedCount() >= minCapacity && this.status.isPublished()) {
+            transitionTo(EncounterStatuses.READY);
         }
-         if (attendances.getConfirmedCount() == maxCapacity) {
-             // Podrías emitir evento EncounterCapacityReachedEvent aquí
-         }
     }
 
+    /**
+     * Learner checks in to the encounter.
+     * @param learnerId
+     * @throws IllegalStateException if not in check-in window or encounter not READY/IN
+     */
     public void checkIn(LearnerId learnerId) {
         if (!isInCheckInWindow()) {
             throw new IllegalStateException("Check-in is only allowed 1 hour before to 15 minutes after the start time.");
         }
-        if (this.status != EncounterStatus.READY && this.status != EncounterStatus.IN_PROGRESS) {
+        if (this.status.getName() != EncounterStatuses.READY && this.status.getName() != EncounterStatuses.IN_PROGRESS) {
              throw new IllegalStateException("Cannot check-in if encounter is not READY or IN_PROGRESS");
         }
         Attendance attendance = attendances.findByLearnerId(learnerId)
@@ -116,56 +137,69 @@ public class Encounter extends AuditableAbstractAggregateRoot<Encounter> {
          // Podrías emitir evento LearnerCheckedInEvent aquí
     }
 
+    /**
+     * Start the encounter, transitioning its status from READY to IN_PROGRESS.
+     * @throws IllegalStateException if the encounter is not in READY state or if there are not enough checked-in learners.
+     */
     public void start() {
-        if (this.status != EncounterStatus.READY) {
+        if (!this.status.isReady()) {
             throw new IllegalStateException("Encounter must be in READY state to start.");
         }
-        // Regla 2: No iniciar sin mínimo 4 check-ins
         if (attendances.getCheckedInCount() < minCapacity) {
-             throw new IllegalStateException("Cannot start encounter with less than " + minCapacity + " checked-in learners.");
+            throw new IllegalStateException("Cannot start encounter with less than " + minCapacity + " checked-in learners.");
         }
-        this.status = EncounterStatus.IN_PROGRESS;
-        // Podrías emitir evento EncounterStartedEvent aquí
+        transitionTo(EncounterStatuses.IN_PROGRESS);
+        // TODO: Emit event EncounterStartedEvent here
     }
 
-     public void complete() {
-         if (this.status != EncounterStatus.IN_PROGRESS) {
-             throw new IllegalStateException("Encounter must be IN_PROGRESS to be completed.");
-         }
-         this.status = EncounterStatus.COMPLETED;
-         // Marcar No-Shows
-         attendances.markNoShows();
-         // Podrías emitir evento EncounterCompletedEvent aquí
-     }
+    /**
+     * Complete the encounter, transitioning its status from IN_PROGRESS to COMPLETED.
+     * @throws IllegalStateException if the encounter is not in IN_PROGRESS state.
+     */
+    public void complete() {
+        if (this.status.getName() != EncounterStatuses.IN_PROGRESS) {
+            throw new IllegalStateException("Encounter must be IN_PROGRESS to be completed.");
+        }
+        transitionTo(EncounterStatuses.COMPLETED);
+        attendances.markNoShows();
+        // Podrías emitir evento EncounterCompletedEvent aquí
+    }
 
-     public void cancel(String reason) {
-          // Regla 4: No cancelar si hay check-ins
-          if (attendances.getCheckedInCount() > 0 && this.status == EncounterStatus.IN_PROGRESS) {
-              throw new IllegalStateException("Cannot cancel encounter with checked-in learners while IN_PROGRESS.");
-          }
-           if (this.status == EncounterStatus.COMPLETED || this.status == EncounterStatus.CANCELLED) {
-                throw new IllegalStateException("Encounter is already COMPLETED or CANCELLED.");
-           }
-          this.status = EncounterStatus.CANCELLED;
-          // Cancelar todas las attendances RESERVED
-          attendances.cancelAllReserved(LocalDateTime.now(), this.scheduledAt);
+    /**
+     * Cancel the encounter, transitioning its status to CANCELLED.
+     * @param reason Reason for cancellation.
+     * @throws IllegalStateException if there are checked-in learners while IN_PROGRESS or if already
+     */
+    public void cancel(String reason) {
+        if (attendances.getCheckedInCount() > 0 && this.status.getName() == EncounterStatuses.IN_PROGRESS) {
+            throw new IllegalStateException("Cannot cancel encounter with checked-in learners while IN_PROGRESS.");
+        }
+        if (this.status.getName() == EncounterStatuses.COMPLETED || this.status.getName() == EncounterStatuses.CANCELLED) {
+            throw new IllegalStateException("Encounter is already COMPLETED or CANCELLED.");
+        }
+        transitionTo(EncounterStatuses.CANCELLED);
+        attendances.cancelAllReserved(LocalDateTime.now(), this.scheduledAt);
           // Podrías emitir evento EncounterCancelledEvent aquí, incluyendo la razón
      }
 
-      public void publish() {
-          if (this.status != EncounterStatus.DRAFT) {
-              throw new IllegalStateException("Encounter must be in DRAFT state to be published.");
-          }
-           if (this.tableId == null) {
+    /**
+     * Publish the encounter, transitioning its status from DRAFT to PUBLISHED.
+    * @throws IllegalStateException if the encounter is not in DRAFT state or if no
+    * @return table is assigned.
+    */
+    public void publish() {
+        if (!this.status.isDraft())
+            throw new IllegalStateException("Encounter must be in DRAFT state to be published.");
+        
+        if (this.tableId == null) 
                 throw new IllegalStateException("Cannot publish encounter without a confirmed table.");
-           }
-          this.status = EncounterStatus.PUBLISHED;
-           // Podrías emitir evento EncounterPublishedEvent aquí
-      }
+        
+        transitionTo(EncounterStatuses.PUBLISHED);
+        // TODO: Emit event EncounterPublishedEvent aquí
+    }
 
 
      // --- Métodos de validación ---
-
     public boolean isInCheckInWindow() {
         LocalDateTime now = LocalDateTime.now();
         LocalDateTime windowStart = this.scheduledAt.minusHours(1);
@@ -173,13 +207,25 @@ public class Encounter extends AuditableAbstractAggregateRoot<Encounter> {
         return !now.isBefore(windowStart) && !now.isAfter(windowEnd);
     }
 
-     public boolean needsAutoCancellation() {
-         return (this.status == EncounterStatus.READY || this.status == EncounterStatus.PUBLISHED) &&
+    public boolean needsAutoCancellation() {
+         return (this.status.getName() == EncounterStatuses.READY || this.status.getName() == EncounterStatuses.PUBLISHED) &&
                 LocalDateTime.now().isAfter(this.scheduledAt.minusMinutes(30)) &&
                 attendances.getCheckedInCount() < minCapacity;
-     }
+    }
 
     public boolean canStart() {
-        return this.status == EncounterStatus.READY && attendances.getCheckedInCount() >= minCapacity;
+        return this.status.getName() == EncounterStatuses.READY && attendances.getCheckedInCount() >= minCapacity;
+    }
+
+    /**
+     * Transition the encounter to a new status.
+     * @param newStatus
+     */
+    private void transitionTo(EncounterStatuses newStatus) {
+        if (!this.status.canTransitionTo(newStatus)) {
+            throw new IllegalStateException(
+                "Cannot transition from " + this.status.getName() + " to " + newStatus);
+        }
+        this.status = new EncounterStatus(newStatus);
     }
 }

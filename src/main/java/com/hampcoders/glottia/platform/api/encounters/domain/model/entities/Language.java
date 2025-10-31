@@ -67,11 +67,22 @@ public class Language {
     }
 
     /**
-     * Create Language from integer value.
-     * @param value
+     * Convert from String name to Language entity.
+     * @param name
      * @return Language instance
      */
-    public static Language fromValue(int value) {
-        return new Language(Languages.fromValue(value));
+    public static Language toLanguageFromName(String name) {
+        return new Language(Languages.valueOf(name));
     }
+
+    /**
+     * Convert from Long id to Language entity.
+     * @param id
+     * @return Language instance
+     */
+    public static Language toLanguageFromId(Long id) {
+        return new Language(Languages.fromValue(id.intValue()));
+    }
+
+
 }

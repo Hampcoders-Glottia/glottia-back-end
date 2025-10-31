@@ -63,14 +63,68 @@ public class EncounterStatus {
     }
 
     /**
-     * Create an EncounterStatus from an integer value.
-     * @param value
-     * @return EncounterStatus
+     * Get the default EncounterStatus entity (DRAFT).
+     * @return EncounterStatus instance
      */
-    public static EncounterStatus fromValue(int value) {
-        EncounterStatuses statusEnum = EncounterStatuses.fromValue(value);
-        return new EncounterStatus(statusEnum);
+    public static EncounterStatus getDefaultEncounterStatus() {
+        return new EncounterStatus(EncounterStatuses.DRAFT);
     }
 
+    /**
+     * Convert a String name to an EncounterStatus instance.
+     * @param name
+     * @return EncounterStatus instance
+     */
+    public static EncounterStatus toEncounterStatusFromName(String name) {
+        return new EncounterStatus(EncounterStatuses.valueOf(name));
+    }
+
+    /**
+     * Convert a Long id to an EncounterStatus instance.
+     * @param id
+     * @return EncounterStatus instance
+     */
+    public static EncounterStatus toEncounterStatusFromId(Long id) {
+        return new EncounterStatus(EncounterStatuses.fromValue(id.intValue()));
+    }
+
+    /**
+     * Check if the encounter status is DRAFT.
+     * @return true if DRAFT, false otherwise
+     */
+    public boolean isDraft() {
+        return EncounterStatuses.DRAFT.equals(this.name);
+    }
+
+    /**
+     * Check if the encounter status is PUBLISHED.
+     * @return true if PUBLISHED, false otherwise
+     */
+    public boolean isPublished() {
+        return EncounterStatuses.PUBLISHED.equals(this.name);
+    }
+    
+    /**
+     * Check if the encounter status is READY.
+     * @return true if READY, false otherwise
+     */
+    public boolean isReady() {
+        return EncounterStatuses.READY.equals(this.name);
+    }
+
+    /**
+     * Check if the encounter status is IN_PROGRESS.
+     * @return true if IN_PROGRESS, false otherwise
+     */
+    public boolean canTransitionTo(EncounterStatuses newStatus) {
+        return switch (this.name) {
+            case DRAFT -> newStatus == EncounterStatuses.PUBLISHED;
+            case PUBLISHED -> newStatus == EncounterStatuses.READY || newStatus == EncounterStatuses.CANCELLED;
+            case READY -> newStatus == EncounterStatuses.IN_PROGRESS || newStatus == EncounterStatuses.CANCELLED;
+            case IN_PROGRESS -> newStatus == EncounterStatuses.COMPLETED || newStatus == EncounterStatuses.CANCELLED;
+            case COMPLETED, CANCELLED -> false;
+            default -> false;
+        };
+    }
 
 }

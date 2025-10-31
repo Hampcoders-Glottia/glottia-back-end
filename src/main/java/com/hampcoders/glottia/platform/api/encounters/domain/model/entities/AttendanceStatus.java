@@ -67,11 +67,28 @@ public class AttendanceStatus {
     }
 
     /**
-     * Create AttendanceStatus from integer value.
-     * @param value
+     * Get the default AttendanceStatus entity (RESERVED).
      * @return AttendanceStatus instance
      */
-    public static AttendanceStatus fromValue(int value) {
-        return new AttendanceStatus(AttendanceStatuses.fromValue(value));
+    public static AttendanceStatus getDefaulAttendanceStatus() {
+        return new AttendanceStatus(AttendanceStatuses.RESERVED);
+    }
+
+    /**
+     * Convert from String name to AttendanceStatus entity.
+     * @param name 
+     * @return AttendanceStatus instance
+     */
+    public static AttendanceStatus toAttendanceStatusFromStringName(String name) {
+        return new AttendanceStatus(AttendanceStatuses.valueOf(name));
+    }
+
+    /**
+     * Convert from Long to AttendanceStatus entity.
+     * @param id
+     * @return AttendanceStatus instance
+     */
+    public static AttendanceStatus toAttendanceStatusFromId(Long newAttendanceStatusId) {
+        return new AttendanceStatus(AttendanceStatuses.fromValue(newAttendanceStatusId.intValue()));
     }
 }

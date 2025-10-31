@@ -65,12 +65,17 @@ public class CEFRLevel {
         return name.getValue();
     }
 
+
+    public static CEFRLevel toCefrLevelFromName(String name) {
+        return new CEFRLevel(CEFRLevels.valueOf(name));
+    }
+
     /**
-     * Create CEFRLevel from integer value.
+     * Convert CEFRLevel from integer value.
      * @param value
      * @return CEFRLevel instance
      */
-    public static CEFRLevel fromValue(int value) {
-        return new CEFRLevel(CEFRLevels.fromValue(value));
+    public static CEFRLevel toCefrLevelFromId(Long newCEFRLevelId) {
+        return new CEFRLevel(CEFRLevels.fromValue(newCEFRLevelId.intValue()));
     }
 }
