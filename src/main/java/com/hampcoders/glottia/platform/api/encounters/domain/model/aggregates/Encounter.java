@@ -2,12 +2,15 @@ package com.hampcoders.glottia.platform.api.encounters.domain.model.aggregates;
 
 import com.hampcoders.glottia.platform.api.encounters.domain.model.commands.CreateEncounterCommand;
 import com.hampcoders.glottia.platform.api.encounters.domain.model.entities.Attendance;
-import com.hampcoders.glottia.platform.api.encounters.domain.model.entities.CEFRLevel;
 import com.hampcoders.glottia.platform.api.encounters.domain.model.entities.EncounterStatus;
-import com.hampcoders.glottia.platform.api.encounters.domain.model.entities.Language;
 import com.hampcoders.glottia.platform.api.encounters.domain.model.valueobjects.*;
 
 import com.hampcoders.glottia.platform.api.shared.domain.model.aggregates.AuditableAbstractAggregateRoot;
+import com.hampcoders.glottia.platform.api.shared.domain.model.entities.CEFRLevel;
+import com.hampcoders.glottia.platform.api.shared.domain.model.entities.Language;
+import com.hampcoders.glottia.platform.api.shared.domain.model.valueobjects.CEFRLevels;
+import com.hampcoders.glottia.platform.api.shared.domain.model.valueobjects.Languages;
+
 import jakarta.persistence.*;
 import lombok.Getter;
 
