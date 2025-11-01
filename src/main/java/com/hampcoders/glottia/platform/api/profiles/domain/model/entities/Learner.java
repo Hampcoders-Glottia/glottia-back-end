@@ -6,6 +6,8 @@ import com.hampcoders.glottia.platform.api.profiles.domain.model.commands.Create
 import com.hampcoders.glottia.platform.api.profiles.domain.model.valueobjects.Address;
 import com.hampcoders.glottia.platform.api.profiles.domain.model.valueobjects.LearnerLanguage;
 import com.hampcoders.glottia.platform.api.shared.domain.model.entities.AuditableModel;
+import com.hampcoders.glottia.platform.api.shared.domain.model.entities.CEFRLevel;
+import com.hampcoders.glottia.platform.api.shared.domain.model.entities.Language;
 
 import jakarta.persistence.Embedded;
 import jakarta.persistence.Entity;

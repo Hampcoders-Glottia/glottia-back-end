@@ -5,8 +5,8 @@ import java.util.List;
 import java.util.Optional;
 
 import com.hampcoders.glottia.platform.api.profiles.domain.model.entities.Learner;
-import com.hampcoders.glottia.platform.api.profiles.domain.model.entities.CEFRLevel;
-import com.hampcoders.glottia.platform.api.profiles.domain.model.entities.Language;
+import com.hampcoders.glottia.platform.api.shared.domain.model.entities.CEFRLevel;
+import com.hampcoders.glottia.platform.api.shared.domain.model.entities.Language;
 import com.hampcoders.glottia.platform.api.profiles.domain.model.entities.LearnerLanguageItem;
 
 import jakarta.persistence.CascadeType;
@@ -49,9 +49,9 @@ public class LearnerLanguage {
      * @param isLearning Indicates whether the learner is currently learning this language.
      */
     public void addLanguage(Learner learner, Language language, CEFRLevel cefrLevel, boolean isLearning) {
-        if (hasLanguage(language)) 
-            throw new IllegalArgumentException("Language " + language.getStringLanguageName() + " already exists for this learner");
-        
+        if (hasLanguage(language))
+            throw new IllegalArgumentException("Language " + language.getStringName() + " already exists for this learner");
+
         this.learnerLanguageItems.add(new LearnerLanguageItem(learner, language, cefrLevel, isLearning));
     }
 
@@ -91,7 +91,7 @@ public class LearnerLanguage {
         if (item.isPresent()) {
             item.get().updateLevel(newLevel);
         } else {
-            throw new IllegalArgumentException("Language " + language.getStringLanguageName() + " not found for this learner");
+            throw new IllegalArgumentException("Language " + language.getStringName() + " not found for this learner");
         }
     }
 
@@ -105,7 +105,7 @@ public class LearnerLanguage {
         if (item.isPresent()) {
             item.get().updateLearningStatus(isLearning);
         } else {
-            throw new IllegalArgumentException("Language " + language.getStringLanguageName() + " not found for this learner");
+            throw new IllegalArgumentException("Language " + language.getStringName() + " not found for this learner");
         }
     }
 

@@ -1,6 +1,8 @@
 package com.hampcoders.glottia.platform.api.profiles.domain.model.entities;
 
 import com.hampcoders.glottia.platform.api.shared.domain.model.entities.AuditableModel;
+import com.hampcoders.glottia.platform.api.shared.domain.model.entities.CEFRLevel;
+import com.hampcoders.glottia.platform.api.shared.domain.model.entities.Language;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -103,7 +105,7 @@ public class LearnerLanguageItem extends AuditableModel {
      * @return the language name
      */
     public String getLanguageName() {
-        return language.getStringLanguageName();
+        return language.getStringName();
     }
 
     /**
@@ -111,6 +113,6 @@ public class LearnerLanguageItem extends AuditableModel {
      * @return the CEFR level name  
      */
     public String getCefrLevelName() {
-        return cefrLevel.getStringCefrLevelName();
+        return cefrLevel.getStringName();
     }
 }
