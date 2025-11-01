@@ -49,13 +49,13 @@ public class LearnerQueryServiceImpl implements LearnerQueryService {
 
     @Override
     public List<Learner> handle(GetLearnersByCityQuery query) {
-        return this.learnerRepository.findByCityIgnoreCase(query.city());
+        return this.learnerRepository.findByAddressCityIgnoreCase(query.city());
     }
 
     @Override
     public List<Learner> handle(GetLearnersByCountryQuery query) {
         // ✅ Return directo
-        return this.learnerRepository.findByCountryIgnoreCase(query.country());
+        return this.learnerRepository.findByAddressCountryIgnoreCase(query.country());
     }
 
     @Override

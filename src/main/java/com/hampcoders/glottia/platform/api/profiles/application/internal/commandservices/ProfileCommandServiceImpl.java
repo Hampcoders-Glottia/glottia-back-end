@@ -16,7 +16,12 @@ import com.hampcoders.glottia.platform.api.profiles.domain.model.entities.Learne
 import com.hampcoders.glottia.platform.api.profiles.domain.model.entities.Partner;
 import com.hampcoders.glottia.platform.api.profiles.domain.services.ProfileCommandService;
 import com.hampcoders.glottia.platform.api.profiles.infrastructure.persistence.jpa.repository.BusinessRoleRepository;
+import com.hampcoders.glottia.platform.api.profiles.infrastructure.persistence.jpa.repository.LearnerRepository;
 import com.hampcoders.glottia.platform.api.profiles.infrastructure.persistence.jpa.repository.ProfileRepository;
+import com.hampcoders.glottia.platform.api.shared.domain.model.entities.CEFRLevel;
+import com.hampcoders.glottia.platform.api.shared.domain.model.entities.Language;
+import com.hampcoders.glottia.platform.api.shared.infrastructure.persistence.jpa.repository.CEFRLevelRepository;
+import com.hampcoders.glottia.platform.api.shared.infrastructure.persistence.jpa.repository.LanguageRepository;
 import com.hampcoders.glottia.platform.api.profiles.domain.services.BusinessRoleQueryService;
 import com.hampcoders.glottia.platform.api.profiles.domain.services.SubscriptionStatusQueryService;
 import com.hampcoders.glottia.platform.api.profiles.domain.model.valueobjects.Address;
@@ -31,21 +36,31 @@ import java.util.Optional;
 public class ProfileCommandServiceImpl implements ProfileCommandService {
 
     private final ProfileRepository profileRepository;
+    private final LearnerRepository learnerRepository;
+
     private final IamContextFacade iamContextFacade;
     private final BusinessRoleQueryService businessRoleQueryService;
     private final SubscriptionStatusQueryService subscriptionStatusQueryService;
     private final BusinessRoleRepository businessRoleRepository;
+    private final LanguageRepository languageRepository;
+    private final CEFRLevelRepository cefrLevelRepository;
 
     public ProfileCommandServiceImpl(ProfileRepository profileRepository,
+                                      LearnerRepository learnerRepository,
                                    IamContextFacade iamContextFacade,
                                    BusinessRoleQueryService businessRoleQueryService,
                                    SubscriptionStatusQueryService subscriptionStatusQueryService,
-                                   BusinessRoleRepository businessRoleRepository) {
+                                   BusinessRoleRepository businessRoleRepository,
+                                   LanguageRepository languageRepository,
+                                   CEFRLevelRepository cefrLevelRepository) {
         this.profileRepository = profileRepository;
+        this.learnerRepository = learnerRepository;
         this.iamContextFacade = iamContextFacade;
         this.businessRoleQueryService = businessRoleQueryService;
         this.subscriptionStatusQueryService = subscriptionStatusQueryService;
         this.businessRoleRepository = businessRoleRepository;
+        this.languageRepository = languageRepository;
+        this.cefrLevelRepository = cefrLevelRepository;
     }
 
     @Override
@@ -119,8 +134,23 @@ public class ProfileCommandServiceImpl implements ProfileCommandService {
     @Override
     @Transactional
     public Optional<LearnerLanguageItem> handle(AddLanguageToLearnerCommand command) {
-        // TODO: Implement when Learner entity has proper language management methods
-        throw new UnsupportedOperationException("AddLanguageToLearnerCommand not yet implemented");
+        Learner learner = learnerRepository.findById(command.learnerId())
+                .orElseThrow(() -> new IllegalArgumentException("Learner not found with ID: " + command.learnerId()));
+
+        Language language = languageRepository.findById(command.languageId())
+                .orElseThrow(() -> new IllegalArgumentException("Language not found with ID: " + command.languageId()));
+
+        CEFRLevel cefrLevel = cefrLevelRepository.findById(command.cefrLevelId())
+                .orElseThrow(() -> new IllegalArgumentException("CEFRLevel not found with ID: " + command.cefrLevelId()));
+
+        learner.addLanguage(language, cefrLevel, command.isLearning());
+
+        learnerRepository.save(learner);
+
+        // Return the newly added language item
+        return learner.getLearnerLanguageItems().stream()
+                .filter(item -> item.getLanguage().equals(language))
+                .findFirst();
     }
 
     @Override

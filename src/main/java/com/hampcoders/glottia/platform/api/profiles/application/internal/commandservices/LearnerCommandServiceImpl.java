@@ -6,12 +6,12 @@ import com.hampcoders.glottia.platform.api.profiles.domain.model.commands.AddLan
 import com.hampcoders.glottia.platform.api.profiles.domain.model.commands.CreateLearnerCommand;
 import com.hampcoders.glottia.platform.api.profiles.domain.model.commands.RemoveLanguageFromLearnerCommand;
 import com.hampcoders.glottia.platform.api.profiles.domain.model.commands.UpdateLearnerLanguageCommand;
-import com.hampcoders.glottia.platform.api.profiles.domain.model.queries.GetCEFRLevelByIdQuery;
-import com.hampcoders.glottia.platform.api.profiles.domain.model.queries.GetLanguageByIdQuery;
-import com.hampcoders.glottia.platform.api.profiles.domain.services.CEFRLevelQueryService;
-import com.hampcoders.glottia.platform.api.profiles.domain.services.LanguageQueryService;
 import com.hampcoders.glottia.platform.api.profiles.domain.services.LearnerCommandService;
 import com.hampcoders.glottia.platform.api.profiles.infrastructure.persistence.jpa.repository.ProfileRepository;
+import com.hampcoders.glottia.platform.api.shared.domain.model.queries.GetCEFRLevelByIdQuery;
+import com.hampcoders.glottia.platform.api.shared.domain.model.queries.GetLanguageByIdQuery;
+import com.hampcoders.glottia.platform.api.shared.domain.services.CEFRLevelQueryService;
+import com.hampcoders.glottia.platform.api.shared.domain.services.LanguageQueryService;
 
 import jakarta.transaction.Transactional;
 
@@ -85,7 +85,7 @@ public class LearnerCommandServiceImpl implements LearnerCommandService {
         // Validate if language is not already added to learner
         var learner = profile.getLearner();
         if (learner.hasLanguage(language)) {
-            throw new IllegalArgumentException("Language " + language.getStringLanguageName() + 
+            throw new IllegalArgumentException("Language " + language.getNameValue() + 
                 " is already added to learner with id " + learner.getId());
         }
         
@@ -126,7 +126,7 @@ public class LearnerCommandServiceImpl implements LearnerCommandService {
         // Validate if language is added to learner
         var learner = profile.getLearner();
         if (!learner.hasLanguage(language)) {
-            throw new IllegalArgumentException("Language " + language.getStringLanguageName() + 
+            throw new IllegalArgumentException("Language " + language.getStringName() + 
                 " is not added to learner with id " + learner.getId());
         }
         
@@ -159,7 +159,7 @@ public class LearnerCommandServiceImpl implements LearnerCommandService {
         // Validate if language is added to learner
         var learner = profile.getLearner();
         if (!learner.hasLanguage(language)) {
-            throw new IllegalArgumentException("Language " + language.getStringLanguageName() + 
+            throw new IllegalArgumentException("Language " + language.getStringName() + 
                 " is not added to learner with id " + learner.getId());
         }
         
