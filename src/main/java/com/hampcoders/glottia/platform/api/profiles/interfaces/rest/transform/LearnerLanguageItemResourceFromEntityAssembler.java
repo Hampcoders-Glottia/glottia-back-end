@@ -9,8 +9,8 @@ public class LearnerLanguageItemResourceFromEntityAssembler {
         return new LearnerLanguageItemResource(
             entity.getId(),
             entity.getLearner().getId(),
-            entity.getLanguage().getLanguage().name(),
-            entity.getCefrLevel().getLevel().name(),
+            entity.getLanguage().getStringName(),
+            entity.getCefrLevel().getStringName(),
             entity.isLearning()
         );
     }
