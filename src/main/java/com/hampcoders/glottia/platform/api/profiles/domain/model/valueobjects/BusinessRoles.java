@@ -11,16 +11,33 @@ public enum BusinessRoles {
     LEARNER(1),
     PARTNER(2);
 
+
+    /**
+     * The integer value associated with the BusinessRole
+     */
     private final int value;
 
+    /**
+     * Constructor for BusinessRoles enum
+     * @param value
+     */
     BusinessRoles(int value) {
         this.value = value;
     }
 
+    /**
+     * Gets the integer value of the BusinessRole
+     * @return the integer value of the BusinessRole
+     */
     public int getValue() {
         return value;
-    }   
+    }
 
+    /**
+     * Gets the BusinessRoles enum from an integer value
+     * @param value
+     * @return
+     */
     public static BusinessRoles fromValue(int value) {
         for (BusinessRoles role : values()) {
             if (role.value == value) {
