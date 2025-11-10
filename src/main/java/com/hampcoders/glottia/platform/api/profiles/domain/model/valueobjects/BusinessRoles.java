@@ -8,8 +8,8 @@ package com.hampcoders.glottia.platform.api.profiles.domain.model.valueobjects;
  * @see IllegalArgumentException
  */
 public enum BusinessRoles {
-    Learner(1),
-    Partner(2);
+    LEARNER(1),
+    PARTNER(2);
 
     private final int value;
 

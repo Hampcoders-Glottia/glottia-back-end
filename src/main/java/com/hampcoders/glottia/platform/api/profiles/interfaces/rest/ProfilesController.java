@@ -23,6 +23,7 @@ import com.hampcoders.glottia.platform.api.profiles.domain.services.ProfileQuery
 import com.hampcoders.glottia.platform.api.profiles.domain.services.BusinessRoleQueryService;
 import com.hampcoders.glottia.platform.api.profiles.interfaces.rest.resources.*;
 import com.hampcoders.glottia.platform.api.profiles.interfaces.rest.transform.*;
+import com.hampcoders.glottia.platform.api.shared.interfaces.rest.resources.MessageResource;
 import com.hampcoders.glottia.platform.api.iam.interfaces.acl.IamContextFacade;
 
 import java.util.List;
@@ -59,7 +60,7 @@ public class ProfilesController {
         @ApiResponse(responseCode = "401", description = "Unauthorized"),
         @ApiResponse(responseCode = "409", description = "Profile with email already exists")
     })
-    public ResponseEntity<ProfileResource> createProfile(
+    public ResponseEntity<?> createProfile(
             @RequestBody CreateProfileResource resource) {
         
         try {
@@ -79,7 +80,8 @@ public class ProfilesController {
             return new ResponseEntity<>(profileResource, HttpStatus.CREATED);
             
         } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().build();
+            MessageResource error = new MessageResource(e.getMessage());
+            return ResponseEntity.badRequest().body(error);
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }

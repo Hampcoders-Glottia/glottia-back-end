@@ -91,7 +91,7 @@ public class WebSecurityConfiguration {
                 .authorizeHttpRequests(
                         authorizeRequests -> authorizeRequests.requestMatchers(
                                         "/api/v1/authentication/**", "/v3/api-docs/**", "/swagger-ui.html",
-                                        "/swagger-ui/**", "/swagger-resources/**", "/webjars/**","/api/v1/registrations", "/api/v1/profiles")
+                                        "/swagger-ui/**", "/swagger-resources/**", "/webjars/**","/api/v1/registrations","/api/v1/profiles")
                                 .permitAll()
                                 .anyRequest()
                                 .authenticated())

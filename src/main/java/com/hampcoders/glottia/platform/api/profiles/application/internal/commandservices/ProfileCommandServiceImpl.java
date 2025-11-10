@@ -75,9 +75,9 @@ public class ProfileCommandServiceImpl implements ProfileCommandService {
 
         var profile = new Profile(command.firstName(),command.lastName(),command.age(), command.email(), businessRole);
 
-        if(businessRole.getRole() == BusinessRoles.Learner) {
+        if(businessRole.getRole() == BusinessRoles.LEARNER) {
             profile.assignAsLearner(new Learner(new Address(command.street(), command.number(), command.city(), command.postalCode(), command.country(), command.latitude(), command.longitude())));
-        } else if (businessRole.getRole() == BusinessRoles.Partner) {
+        } else if (businessRole.getRole() == BusinessRoles.PARTNER) {
             profile.assignAsPartner(new Partner(command.legalName(), command.businessName(), command.taxId(), command.contactEmail(), command.contactPhone(), command.contactPersonName(), command.description()));
         }
 

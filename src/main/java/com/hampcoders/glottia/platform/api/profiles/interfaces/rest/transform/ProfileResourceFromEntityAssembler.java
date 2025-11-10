@@ -23,7 +23,7 @@ public class ProfileResourceFromEntityAssembler {
         Long partnerId = null;
 
         switch (entity.getBusinessRole().getRole()) {
-            case Learner -> {
+            case LEARNER -> {
                 if (entity.getLearner() != null) {
                     info = entity.getLearner().getFullAddress();
                     street = entity.getLearner().getAddress().street();
@@ -36,7 +36,7 @@ public class ProfileResourceFromEntityAssembler {
                     throw new IllegalStateException("Learner details are missing for profile ID: " + entity.getId());
                 }
             }
-            case Partner -> {
+            case PARTNER -> {
                 if (entity.getPartner() != null) {
                     info = entity.getPartner().getDisplayName();
                     legalName = entity.getPartner().getLegalName();
