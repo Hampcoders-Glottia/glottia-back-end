@@ -50,8 +50,8 @@ public class EncounterStatus {
      * Get the string name of the encounter status.
      * @return EncounterStatuses
      */
-    public EncounterStatuses getStringName() {
-        return name;
+    public String getStringName() {
+        return name.name();
     }
 
     /**
