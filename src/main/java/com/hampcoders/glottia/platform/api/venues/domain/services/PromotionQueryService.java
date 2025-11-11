@@ -11,6 +11,7 @@ import com.hampcoders.glottia.platform.api.venues.domain.model.queries.promotion
 import com.hampcoders.glottia.platform.api.venues.domain.model.queries.promotions.GetExpiredPromotionsByVenueIdQuery;
 import com.hampcoders.glottia.platform.api.venues.domain.model.queries.promotions.GetPromotionByIdQuery;
 import com.hampcoders.glottia.platform.api.venues.domain.model.queries.promotions.GetPromotionCatalogQuery;
+import com.hampcoders.glottia.platform.api.venues.domain.model.queries.promotions.GetVenuePromotionByIdQuery;
 import com.hampcoders.glottia.platform.api.venues.domain.model.queries.promotions.GetVenuePromotionByVenueIdAndPromotionIdQuery;
 
 
@@ -22,4 +23,5 @@ public interface PromotionQueryService {
     List<VenuePromotion> handle(GetExpiredPromotionsByVenueIdQuery query);  // Devuelve VenuePromotion expiradas
     Optional<Promotion> handle(GetPromotionByIdQuery query);  // Devuelve Promotion por ID
     Optional<VenuePromotion> handle(GetVenuePromotionByVenueIdAndPromotionIdQuery query);  // Devuelve VenuePromotion por venue y promotion ID
+    Optional<VenuePromotion> handle(GetVenuePromotionByIdQuery query);  // Devuelve VenuePromotion por ID
 }
