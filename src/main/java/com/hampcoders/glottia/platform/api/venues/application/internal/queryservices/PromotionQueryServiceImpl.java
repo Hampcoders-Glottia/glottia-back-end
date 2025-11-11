@@ -56,4 +56,9 @@ public class PromotionQueryServiceImpl implements PromotionQueryService {
     public Optional<VenuePromotion> handle(GetVenuePromotionByVenueIdAndPromotionIdQuery query) {
         return venuePromotionRepository.findByVenueIdAndPromotionId(query.venueId(), query.promotionId());
     }
+
+	@Override
+	public Optional<VenuePromotion> handle(GetVenuePromotionByIdQuery query) {
+        return venuePromotionRepository.findById(query.venuePromotionId());
+	}
 }
