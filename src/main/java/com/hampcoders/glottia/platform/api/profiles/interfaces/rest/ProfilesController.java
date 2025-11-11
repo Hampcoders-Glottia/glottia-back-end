@@ -49,41 +49,33 @@ public class ProfilesController {
     }
 
     /**
-     * Create a complete profile with role assignment
+     * Create a new profile
+     * POST /api/v1/profiles
      */
     @PostMapping
-    @Operation(summary = "Create a complete profile with role assignment", description = "Creates a complete profile with automatic role assignment based on provided data")
+    @Operation(summary = "Create a new profile", description = "Creates a new profile with basic information")
     @ApiResponses(value = {
         @ApiResponse(responseCode = "201", description = "Profile created successfully",
                 content = @Content(mediaType = "application/json", schema = @Schema(implementation = ProfileResource.class))),
         @ApiResponse(responseCode = "400", description = "Invalid input data"),
-        @ApiResponse(responseCode = "401", description = "Unauthorized"),
         @ApiResponse(responseCode = "409", description = "Profile with email already exists")
     })
-    public ResponseEntity<?> createProfile(
-            @RequestBody CreateProfileResource resource) {
-        
+    public ResponseEntity<?> createProfile(@RequestBody CreateProfileResource resource) {
         try {
-            var command = CreateProfileCommandFromResourceAssembler
-                .toCommandFromResource(resource);
+            var command = CreateProfileCommandFromResourceAssembler.toCommandFromResource(resource);
             var profileId = profileCommandService.handle(command);
 
-            var optionalProfile = profileQueryService.handle(new GetProfileByIdQuery(profileId));
-
-            if (optionalProfile.isEmpty()) {
-                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
-            }
+            var profile = profileQueryService.handle(new GetProfileByIdQuery(profileId))
+                .orElseThrow(() -> new IllegalStateException("Profile not found after creation"));
             
-            // Convert to resource
-            var profileResource = ProfileResourceFromEntityAssembler.toResourceFromEntity(optionalProfile.get());
-            
-            return new ResponseEntity<>(profileResource, HttpStatus.CREATED);
+            var profileResource = ProfileResourceFromEntityAssembler.toResourceFromEntity(profile);
+            return ResponseEntity.status(HttpStatus.CREATED).body(profileResource);
             
         } catch (IllegalArgumentException e) {
-            MessageResource error = new MessageResource(e.getMessage());
-            return ResponseEntity.badRequest().body(error);
+            return ResponseEntity.badRequest().body(new MessageResource(e.getMessage()));
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(new MessageResource("An error occurred while creating the profile"));
         }
     }
 
@@ -115,9 +107,7 @@ public class ProfilesController {
                 addressResource.number(),
                 addressResource.city(),
                 addressResource.postalCode(),
-                addressResource.country(),
-                addressResource.latitude(),
-                addressResource.longitude()
+                addressResource.country()
             );
             
             // Save profile (this would normally be done through a command service)
@@ -131,59 +121,39 @@ public class ProfilesController {
     }
 
     /**
-     * Assign partner role to existing profile - RESTful sub-resource
-     */
-    @PostMapping("/{profileId}/partner-assignment")
-    @Operation(summary = "Assign partner role to profile", description = "Assigns partner role with business information to an existing profile")
-    @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Partner role assigned successfully"),
-        @ApiResponse(responseCode = "400", description = "Invalid profile ID or profile already has a role"),
-        @ApiResponse(responseCode = "404", description = "Profile not found")
-    })
-    public ResponseEntity<ProfileResource> assignPartnerRole(
-            @Parameter(description = "Profile ID") @PathVariable Long profileId,
-            @RequestBody PartnerBusinessInfoResource businessInfo) {
-        try {
-            var profile = profileQueryService.handle(new GetProfileByIdQuery(profileId));
-            if (profile.isEmpty()) {
-                return ResponseEntity.notFound().build();
-            }
-            
-            if (profile.get().isLearner() || profile.get().isPartner()) {
-                return ResponseEntity.badRequest().build(); // Profile already has a role
-            }
-            
-            profile.get().assignAsPartner(
-                businessInfo.legalName(),
-                businessInfo.businessName(),
-                businessInfo.taxId(),
-                businessInfo.contactEmail(),
-                businessInfo.contactPhone(),
-                businessInfo.contactPersonName(),
-                businessInfo.description()
-            );
-            
-            // Save profile (this would normally be done through a command service)
-            var updatedProfile = profileQueryService.handle(new GetProfileByIdQuery(profileId)).get();
-            var profileResource = ProfileResourceFromEntityAssembler.toResourceFromEntity(updatedProfile);
-            return ResponseEntity.ok(profileResource);
-            
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
-        }
-    }
-
-    /**
-     * Get all profiles
+     * Get all profiles with optional filtering
      */
     @GetMapping
-    @Operation(summary = "Get all profiles", description = "Retrieves all profiles in the system")
+    @Operation(summary = "Get all profiles", description = "Retrieves all profiles with optional filters")
     @ApiResponse(responseCode = "200", description = "Profiles retrieved successfully")
-    public ResponseEntity<List<ProfileResource>> getAllProfiles() {
-        var profiles = profileQueryService.handle(new GetAllProfilesQuery());
-        var profileResources = profiles.stream()
+    public ResponseEntity<List<ProfileResource>> getAllProfiles(
+            @Parameter(description = "Filter by business role") @RequestParam(required = false) String role,
+            @Parameter(description = "Filter by age") @RequestParam(required = false) Integer age) {
+        
+        List<ProfileResource> profileResources;
+        
+        if (role != null) {
+            try {
+                BusinessRole businessRoleEnum = BusinessRole.toBusinessRoleFromName(role);
+                var profiles = profileQueryService.handle(new GetProfilesByBusinessRoleQuery(businessRoleEnum.getRole()));
+                profileResources = profiles.stream()
+                    .map(ProfileResourceFromEntityAssembler::toResourceFromEntity)
+                    .toList();
+            } catch (IllegalArgumentException e) {
+                return ResponseEntity.badRequest().build();
+            }
+        } else if (age != null) {
+            var profiles = profileQueryService.handle(new GetProfileByAgeQuery(age));
+            profileResources = profiles.stream()
                 .map(ProfileResourceFromEntityAssembler::toResourceFromEntity)
                 .toList();
+        } else {
+            var profiles = profileQueryService.handle(new GetAllProfilesQuery());
+            profileResources = profiles.stream()
+                .map(ProfileResourceFromEntityAssembler::toResourceFromEntity)
+                .toList();
+        }
+        
         return ResponseEntity.ok(profileResources);
     }
 
@@ -198,56 +168,58 @@ public class ProfilesController {
     })
     public ResponseEntity<ProfileResource> getProfileById(
             @Parameter(description = "Profile ID") @PathVariable Long id) {
-        var profile = profileQueryService.handle(new GetProfileByIdQuery(id));
-        
-        if (profile.isEmpty()) {
-            return ResponseEntity.notFound().build();
-        }
-
-        var profileResource = ProfileResourceFromEntityAssembler.toResourceFromEntity(profile.get());
-        return ResponseEntity.ok(profileResource);
+        return profileQueryService.handle(new GetProfileByIdQuery(id))
+            .map(profile -> ResponseEntity.ok(
+                ProfileResourceFromEntityAssembler.toResourceFromEntity(profile)))
+            .orElse(ResponseEntity.notFound().build());
     }
 
     /**
-     * Get profile by email
+     * Search profile by email
      */
-    @GetMapping("/email/{email}")
-    @Operation(summary = "Get profile by email", description = "Retrieves a profile by email address")
-    public ResponseEntity<ProfileResource> getProfileByEmail(
-            @Parameter(description = "Email address") @PathVariable String email) {
-        var profile = profileQueryService.handle(new GetProfileByEmailQuery(email));
-        
-        if (profile.isEmpty()) {
-            return ResponseEntity.notFound().build();
-        }
-
-        var profileResource = ProfileResourceFromEntityAssembler.toResourceFromEntity(profile.get());
-        return ResponseEntity.ok(profileResource);
+    @GetMapping("/search")
+    @Operation(summary = "Search profile by email", description = "Searches for a profile by email address")
+    @ApiResponse(responseCode = "200", description = "Search completed")
+    public ResponseEntity<ProfileResource> searchProfileByEmail(
+            @Parameter(description = "Email address") @RequestParam String email) {
+        return profileQueryService.handle(new GetProfileByEmailQuery(email))
+            .map(profile -> ResponseEntity.ok(
+                ProfileResourceFromEntityAssembler.toResourceFromEntity(profile)))
+            .orElse(ResponseEntity.notFound().build());
     }
 
     /**
      * Update profile
      */
     @PutMapping("/{id}")
-    @Operation(summary = "Update profile", description = "Updates an existing profile")
+    @Operation(summary = "Update profile", description = "Updates an existing profile's basic and role-specific information")
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Profile updated successfully"),
-        @ApiResponse(responseCode = "404", description = "Profile not found")
+        @ApiResponse(responseCode = "404", description = "Profile not found"),
+        @ApiResponse(responseCode = "400", description = "Invalid input data")
     })
-    public ResponseEntity<ProfileResource> updateProfile(
+    public ResponseEntity<?> updateProfile(
             @Parameter(description = "Profile ID") @PathVariable Long id,
-            @RequestBody UpdateProfileResource resource) {
-        var command = UpdateProfileCommandFromResourceAssembler.toCommandFromResource(id, resource);
-        var updatedProfile = profileCommandService.handle(command);
-        
-        if (updatedProfile.isEmpty()) {
-            return ResponseEntity.notFound().build();
+            @RequestBody UpdateProfileResource resource) {  // Cambiar a UpdateProfileResource
+        try {
+            // Usar el assembler para crear el comando (CQRS compliant)
+            var command = UpdateProfileCommandFromResourceAssembler.toCommandFromResource(id, resource);
+            
+            // Ejecutar el comando
+            var updatedProfile = profileCommandService.handle(command);
+            if (updatedProfile.isPresent()) {
+                var profileResource = ProfileResourceFromEntityAssembler.toResourceFromEntity(updatedProfile.get());
+                return ResponseEntity.ok(profileResource);
+            } else {
+                return ResponseEntity.notFound().build();
+            }
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(new MessageResource(e.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(new MessageResource("An error occurred while updating the profile"));
         }
-
-        var profileResource = ProfileResourceFromEntityAssembler.toResourceFromEntity(updatedProfile.get());
-        return ResponseEntity.ok(profileResource);
     }
-
     /**
      * Delete profile
      */
@@ -259,53 +231,12 @@ public class ProfilesController {
     })
     public ResponseEntity<Void> deleteProfile(
             @Parameter(description = "Profile ID") @PathVariable Long id) {
-        var profile = profileQueryService.handle(new GetProfileByIdQuery(id));
-        
-        if (profile.isEmpty()) {
+        if (profileQueryService.handle(new GetProfileByIdQuery(id)).isEmpty()) {
             return ResponseEntity.notFound().build();
         }
-
         profileCommandService.handle(new DeleteProfileCommand(id));
         return ResponseEntity.noContent().build();
     }
-
-    /**
-     * Get profiles by business role
-     */
-    @GetMapping("/business-role/{role}")
-    @Operation(summary = "Get profiles by business role", description = "Retrieves profiles filtered by business role")
-    public ResponseEntity<List<ProfileResource>> getProfilesByBusinessRole(
-            @Parameter(description = "Business role (LEARNER, PARTNER, ADMIN)") @PathVariable String role) {
-        try {
-            // Convert string to enum
-            BusinessRole businessRoleEnum = BusinessRole.toBusinessRoleFromName(role);
-            
-            // Query profiles directly using the BusinessRoles enum
-            var profiles = profileQueryService.handle(new GetProfilesByBusinessRoleQuery(businessRoleEnum.getRole()));
-            var profileResources = profiles.stream()
-                    .map(ProfileResourceFromEntityAssembler::toResourceFromEntity)
-                    .toList();
-            return ResponseEntity.ok(profileResources);
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().build();
-        }
-    }
-
-    /**
-     * Get profiles by age
-     */
-    @GetMapping("/age/{age}")
-    @Operation(summary = "Get profiles by age", description = "Retrieves profiles filtered by age")
-    public ResponseEntity<List<ProfileResource>> getProfilesByAge(
-            @Parameter(description = "Age") @PathVariable Integer age) {
-        var profiles = profileQueryService.handle(new GetProfileByAgeQuery(age));
-        var profileResources = profiles.stream()
-                .map(ProfileResourceFromEntityAssembler::toResourceFromEntity)
-                .toList();
-        return ResponseEntity.ok(profileResources);
-    }
-
-    // --- Learner Language Management Endpoints ---
 
     /**
      * Add language to learner
@@ -314,14 +245,13 @@ public class ProfilesController {
     @Operation(summary = "Add language to learner", description = "Adds a new language with CEFR level to a learner profile")
     @ApiResponses(value = {
         @ApiResponse(responseCode = "201", description = "Language added successfully"),
-        @ApiResponse(responseCode = "400", description = "Invalid request or profile not found"),
+        @ApiResponse(responseCode = "400", description = "Invalid request"),
         @ApiResponse(responseCode = "404", description = "Profile not found or not a learner")
     })
-    public ResponseEntity<LearnerLanguageItemResource> addLanguageToLearner(
+    public ResponseEntity<?> addLanguageToLearner(
             @Parameter(description = "Profile ID") @PathVariable Long profileId,
             @RequestBody AddLanguageResource languageResource) {
         try {
-            // First, get the profile to find the learner ID
             var profile = profileQueryService.handle(new GetProfileByIdQuery(profileId));
             if (profile.isEmpty() || !profile.get().isLearner()) {
                 return ResponseEntity.notFound().build();
@@ -334,48 +264,12 @@ public class ProfilesController {
                 languageResource.isLearning()
             );
             
-            var result = profileCommandService.handle(command);
-            if (result.isPresent()) {
-                // Convert to resource (you'd need to create this assembler)
-                var resource = LearnerLanguageItemResourceFromEntityAssembler.toResourceFromEntity(result.get());
-                return ResponseEntity.status(HttpStatus.CREATED).body(resource);
-            } else {
-                return ResponseEntity.badRequest().build();
-            }
+            return profileCommandService.handle(command)
+                .map(item -> ResponseEntity.status(HttpStatus.CREATED).body(
+                    LearnerLanguageItemResourceFromEntityAssembler.toResourceFromEntity(item)))
+                .orElse(ResponseEntity.badRequest().build());
         } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().build();
-        }
-    }
-
-    /**
-     * Remove language from learner
-     */
-    @DeleteMapping("/{profileId}/learner/languages/{languageId}")
-    @Operation(summary = "Remove language from learner", description = "Removes a language from a learner profile")
-    @ApiResponses(value = {
-        @ApiResponse(responseCode = "204", description = "Language removed successfully"),
-        @ApiResponse(responseCode = "400", description = "Invalid request"),
-        @ApiResponse(responseCode = "404", description = "Profile or language not found")
-    })
-    public ResponseEntity<Void> removeLanguageFromLearner(
-            @Parameter(description = "Profile ID") @PathVariable Long profileId,
-            @Parameter(description = "Language ID") @PathVariable Long languageId) {
-        try {
-            // First, get the profile to find the learner ID
-            var profile = profileQueryService.handle(new GetProfileByIdQuery(profileId));
-            if (profile.isEmpty() || !profile.get().isLearner()) {
-                return ResponseEntity.notFound().build();
-            }
-
-            var command = new RemoveLanguageFromLearnerCommand(
-                profile.get().getLearner().getId(),
-                languageId
-            );
-            
-            profileCommandService.handle(command);
-            return ResponseEntity.noContent().build();
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().build();
+            return ResponseEntity.badRequest().body(new MessageResource(e.getMessage()));
         }
     }
 
@@ -386,15 +280,13 @@ public class ProfilesController {
     @Operation(summary = "Update learner language", description = "Updates a language's CEFR level or learning status for a learner")
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Language updated successfully"),
-        @ApiResponse(responseCode = "400", description = "Invalid request"),
         @ApiResponse(responseCode = "404", description = "Profile or language not found")
     })
-    public ResponseEntity<LearnerLanguageItemResource> updateLearnerLanguage(
+    public ResponseEntity<?> updateLearnerLanguage(
             @Parameter(description = "Profile ID") @PathVariable Long profileId,
             @Parameter(description = "Language ID") @PathVariable Long languageId,
             @RequestBody UpdateLanguageResource updateResource) {
         try {
-            // First, get the profile to find the learner ID
             var profile = profileQueryService.handle(new GetProfileByIdQuery(profileId));
             if (profile.isEmpty() || !profile.get().isLearner()) {
                 return ResponseEntity.notFound().build();
@@ -407,15 +299,44 @@ public class ProfilesController {
                 updateResource.isLearning()
             );
             
-            var result = profileCommandService.handle(command);
-            if (result.isPresent()) {
-                var resource = LearnerLanguageItemResourceFromEntityAssembler.toResourceFromEntity(result.get());
-                return ResponseEntity.ok(resource);
-            } else {
+            return profileCommandService.handle(command)
+                .map(item -> ResponseEntity.ok(
+                    LearnerLanguageItemResourceFromEntityAssembler.toResourceFromEntity(item)))
+                .orElse(ResponseEntity.notFound().build());
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(new MessageResource(e.getMessage()));
+        }
+    }
+    
+    /**
+     * Remove language from learner
+     */
+    @DeleteMapping("/{id}/learner/languages/{languageId}")
+    @Operation(summary = "Remove language from learner", description = "Removes a language from a learner profile")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "204", description = "Language removed successfully"),
+        @ApiResponse(responseCode = "404", description = "Profile or language not found")
+    })
+    public ResponseEntity<Void> removeLanguageFromLearner(
+            @Parameter(description = "Profile ID") @PathVariable Long id,
+            @Parameter(description = "Language ID") @PathVariable Long languageId) {
+        try {
+            var profile = profileQueryService.handle(new GetProfileByIdQuery(id));
+            if (profile.isEmpty() || !profile.get().isLearner()) {
                 return ResponseEntity.notFound().build();
             }
+
+            var command = new RemoveLanguageFromLearnerCommand(
+                profile.get().getLearner().getId(),
+                languageId
+            );
+            
+            profileCommandService.handle(command);
+            return ResponseEntity.noContent().build();
+            
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().build();
         }
     }
+    
 }

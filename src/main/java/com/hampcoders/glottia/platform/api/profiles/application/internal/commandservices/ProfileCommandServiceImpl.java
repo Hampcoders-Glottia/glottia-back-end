@@ -5,12 +5,10 @@ import com.hampcoders.glottia.platform.api.profiles.domain.model.commands.Create
 import com.hampcoders.glottia.platform.api.profiles.domain.model.commands.DeleteProfileCommand;
 import com.hampcoders.glottia.platform.api.profiles.domain.model.commands.UpdateProfileCommand;
 import com.hampcoders.glottia.platform.api.profiles.domain.model.commands.AddLanguageToLearnerCommand;
-import com.hampcoders.glottia.platform.api.profiles.domain.model.commands.CompleteRegistrationCommand;
-import com.hampcoders.glottia.platform.api.profiles.domain.model.commands.CreateCompleteProfileCommand;
 import com.hampcoders.glottia.platform.api.profiles.domain.model.commands.RemoveLanguageFromLearnerCommand;
+import com.hampcoders.glottia.platform.api.profiles.domain.model.commands.UpdateLearnerCommand;
 import com.hampcoders.glottia.platform.api.profiles.domain.model.commands.UpdateLearnerLanguageCommand;
-import com.hampcoders.glottia.platform.api.profiles.domain.model.commands.UpdatePartnerContactCommand;
-import com.hampcoders.glottia.platform.api.profiles.domain.model.commands.UpdatePartnerSubscriptionCommand;
+import com.hampcoders.glottia.platform.api.profiles.domain.model.commands.UpdatePartnerCommand;
 import com.hampcoders.glottia.platform.api.profiles.domain.model.entities.Learner;
 import com.hampcoders.glottia.platform.api.profiles.domain.model.entities.LearnerLanguageItem;
 import com.hampcoders.glottia.platform.api.profiles.domain.model.entities.Partner;
@@ -22,11 +20,8 @@ import com.hampcoders.glottia.platform.api.shared.domain.model.entities.CEFRLeve
 import com.hampcoders.glottia.platform.api.shared.domain.model.entities.Language;
 import com.hampcoders.glottia.platform.api.shared.infrastructure.persistence.jpa.repository.CEFRLevelRepository;
 import com.hampcoders.glottia.platform.api.shared.infrastructure.persistence.jpa.repository.LanguageRepository;
-import com.hampcoders.glottia.platform.api.profiles.domain.services.BusinessRoleQueryService;
-import com.hampcoders.glottia.platform.api.profiles.domain.services.SubscriptionStatusQueryService;
 import com.hampcoders.glottia.platform.api.profiles.domain.model.valueobjects.Address;
 import com.hampcoders.glottia.platform.api.profiles.domain.model.valueobjects.BusinessRoles;
-import com.hampcoders.glottia.platform.api.iam.interfaces.acl.IamContextFacade;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -38,26 +33,17 @@ public class ProfileCommandServiceImpl implements ProfileCommandService {
     private final ProfileRepository profileRepository;
     private final LearnerRepository learnerRepository;
 
-    private final IamContextFacade iamContextFacade;
-    private final BusinessRoleQueryService businessRoleQueryService;
-    private final SubscriptionStatusQueryService subscriptionStatusQueryService;
     private final BusinessRoleRepository businessRoleRepository;
     private final LanguageRepository languageRepository;
     private final CEFRLevelRepository cefrLevelRepository;
 
     public ProfileCommandServiceImpl(ProfileRepository profileRepository,
                                       LearnerRepository learnerRepository,
-                                   IamContextFacade iamContextFacade,
-                                   BusinessRoleQueryService businessRoleQueryService,
-                                   SubscriptionStatusQueryService subscriptionStatusQueryService,
                                    BusinessRoleRepository businessRoleRepository,
                                    LanguageRepository languageRepository,
                                    CEFRLevelRepository cefrLevelRepository) {
         this.profileRepository = profileRepository;
         this.learnerRepository = learnerRepository;
-        this.iamContextFacade = iamContextFacade;
-        this.businessRoleQueryService = businessRoleQueryService;
-        this.subscriptionStatusQueryService = subscriptionStatusQueryService;
         this.businessRoleRepository = businessRoleRepository;
         this.languageRepository = languageRepository;
         this.cefrLevelRepository = cefrLevelRepository;
@@ -65,6 +51,7 @@ public class ProfileCommandServiceImpl implements ProfileCommandService {
 
     @Override
     public Long handle(CreateProfileCommand command) {
+
         var fullName = command.firstName() + " " + command.lastName();
         if (this.profileRepository.existsByFullName(fullName)) {
             throw new IllegalArgumentException("Profile with full name " + fullName + " already exists");
@@ -76,7 +63,7 @@ public class ProfileCommandServiceImpl implements ProfileCommandService {
         var profile = new Profile(command.firstName(),command.lastName(),command.age(), command.email(), businessRole);
 
         if(businessRole.getRole() == BusinessRoles.LEARNER) {
-            profile.assignAsLearner(new Learner(new Address(command.street(), command.number(), command.city(), command.postalCode(), command.country(), command.latitude(), command.longitude())));
+            profile.assignAsLearner(new Learner(new Address(command.street(), command.number(), command.city(), command.postalCode(), command.country())));
         } else if (businessRole.getRole() == BusinessRoles.PARTNER) {
             profile.assignAsPartner(new Partner(command.legalName(), command.businessName(), command.taxId(), command.contactEmail(), command.contactPhone(), command.contactPersonName(), command.description()));
         }
@@ -90,37 +77,52 @@ public class ProfileCommandServiceImpl implements ProfileCommandService {
     }
 
     @Override
+    @Transactional
     public Optional<Profile> handle(UpdateProfileCommand command) {
-        var profileId = command.profileId();
-        var fullName = command.firstName() + " " + command.lastName();
-        if (this.profileRepository.existsByFullNameAndIdIsNot(fullName, profileId)) {
-            throw new IllegalArgumentException("Profile with full name " + fullName + " already exists");
+        // Buscar el perfil
+        Profile profile = profileRepository.findById(command.profileId())
+                .orElseThrow(() -> new IllegalArgumentException(
+                    String.format("Profile with id %d does not exist", command.profileId())));
+
+        // Validar unicidad del email (excluyendo el perfil actual)
+        if (profileRepository.existsByEmailAndIdIsNot(command.email(), command.profileId())) {
+            throw new IllegalArgumentException(
+                String.format("Profile with email %s already exists", command.email()));
         }
 
-        // If the profile does not exist, throw an exception
-        if (!this.profileRepository.existsById(profileId)) {
-            throw new IllegalArgumentException("Profile with id " + profileId + " does not exist");
+        // Validar unicidad del nombre completo (excluyendo el perfil actual)
+        String fullName = command.firstName() + " " + command.lastName();
+        if (profileRepository.existsByFullNameAndIdIsNot(fullName, command.profileId())) {
+            throw new IllegalArgumentException(
+                String.format("Profile with full name '%s' already exists", fullName));
         }
 
-        var profileToUpdate = this.profileRepository.findById(profileId).get();
-        profileToUpdate.updateInformation(command);
+        // Actualizar información básica
+        System.out.println("DEBUG: Before updateBasicInformation, current firstName: " + profile.getFirstName());
+        profile.updateBasicInformation(command.firstName(), command.lastName(), command.age(), command.email());
+        System.out.println("DEBUG: After updateBasicInformation, new firstName: " + profile.getFirstName());
 
-        try {
-            var updatedProfile = this.profileRepository.save(profileToUpdate);
-            return Optional.of(updatedProfile);
-        } catch (Exception e) {
-            throw new IllegalArgumentException("Error while updating profile: " + e.getMessage());
+        if (profile.isLearner()) {
+            System.out.println("DEBUG: Profile is Learner, updating learner fields");
+            if (command.street() != null || command.city() != null || command.country() != null) {
+                profile.updateLearner(command.street(), command.number(), command.city(), command.postalCode(), command.country());
+            }
         }
+
+        System.out.println("DEBUG: Saving profile");
+        profileRepository.save(profile);
+        profileRepository.flush();  // Fuerza el guardado inmediato
+        System.out.println("DEBUG: Profile saved and flushed successfully");
+
+        return Optional.of(profile);
     }
 
     @Override
     public void handle(DeleteProfileCommand command) {
-        // If the profile does not exist, throw an exception
         if (!this.profileRepository.existsById(command.profileId())) {
             throw new IllegalArgumentException("Profile with id " + command.profileId() + " does not exist");
         }
 
-        // Try to delete the profile, if an error occurs, throw an exception
         try {
             this.profileRepository.deleteById(command.profileId());
         } catch (Exception e) {
@@ -128,9 +130,6 @@ public class ProfileCommandServiceImpl implements ProfileCommandService {
         }
     }
 
-    // TODO: Implement learner and partner management operations
-    // These methods are placeholders until the entity relationships are properly configured
-    
     @Override
     @Transactional
     public Optional<LearnerLanguageItem> handle(AddLanguageToLearnerCommand command) {
@@ -156,40 +155,93 @@ public class ProfileCommandServiceImpl implements ProfileCommandService {
     @Override
     @Transactional
     public void handle(RemoveLanguageFromLearnerCommand command) {
-        // TODO: Implement when Learner entity has proper language management methods
-        throw new UnsupportedOperationException("RemoveLanguageFromLearnerCommand not yet implemented");
+        Learner learner = learnerRepository.findById(command.learnerId())
+                .orElseThrow(() -> new IllegalArgumentException(
+                    String.format("Learner not found with ID: %d", command.learnerId())));
+
+        Language language = languageRepository.findById(command.languageId())
+                .orElseThrow(() -> new IllegalArgumentException(
+                    String.format("Language not found with ID: %d", command.languageId())));
+
+        if (!learner.hasLanguage(language)) {
+            throw new IllegalArgumentException(
+                String.format("Learner does not have language: %s", language.getStringName()));
+        }
+
+        learner.removeLanguage(language);
+
+        learnerRepository.save(learner);
     }
 
     @Override
     @Transactional
     public Optional<LearnerLanguageItem> handle(UpdateLearnerLanguageCommand command) {
-        // TODO: Implement when Learner entity has proper language management methods
-        throw new UnsupportedOperationException("UpdateLearnerLanguageCommand not yet implemented");
+        Learner learner = learnerRepository.findById(command.learnerId())
+                .orElseThrow(() -> new IllegalArgumentException(
+                    String.format("Learner not found with ID: %d", command.learnerId())));
+
+        Language language = languageRepository.findById(command.languageId())
+                .orElseThrow(() -> new IllegalArgumentException(
+                    String.format("Language not found with ID: %d", command.languageId())));
+
+        // Validar que el learner tiene este idioma
+        if (!learner.hasLanguage(language)) {
+            throw new IllegalArgumentException(
+                String.format("Learner does not have language: %s", language.getStringName()));
+        }
+
+        if (command.cefrLevelId() != null) {
+            CEFRLevel cefrLevel = cefrLevelRepository.findById(command.cefrLevelId())
+                    .orElseThrow(() -> new IllegalArgumentException(
+                        String.format("CEFR Level not found with ID: %d", command.cefrLevelId())));
+            learner.updateLanguageLevel(language, cefrLevel);
+        }
+
+        if (command.isLearning() != null) {
+            learner.updateLanguageLearningStatus(language, command.isLearning());
+        }
+
+        learnerRepository.save(learner);
+
+        return learner.getLearnerLanguageItems().stream()
+                .filter(item -> item.getLanguage().equals(language))
+                .findFirst();
     }
 
     @Override
     @Transactional
-    public Optional<Profile> handle(UpdatePartnerContactCommand command) {
-        // TODO: Implement when Partner entity has proper contact management methods
-        throw new UnsupportedOperationException("UpdatePartnerContactCommand not yet implemented");
+    public Optional<Profile> handle(UpdateLearnerCommand command) {
+        Profile profile = profileRepository.findById(command.profileId())
+                .orElseThrow(() -> new IllegalArgumentException(
+                    String.format("Profile with id %d does not exist", command.profileId())));
+
+        if (!profile.isLearner()) {
+            throw new IllegalArgumentException("Profile is not assigned as a Learner");
+        }
+
+        // Actualizar información del Learner
+        profile.updateLearner(command.street(), command.number(), command.city(), command.postalCode(),command.country());
+
+        profileRepository.save(profile);
+        return Optional.of(profile);
     }
 
     @Override
     @Transactional
-    public Optional<Profile> handle(UpdatePartnerSubscriptionCommand command) {
-        // TODO: Implement when Partner entity has proper subscription management methods
-        throw new UnsupportedOperationException("UpdatePartnerSubscriptionCommand not yet implemented");
-    }
+    public Optional<Profile> handle(UpdatePartnerCommand command) {
+        Profile profile = profileRepository.findById(command.profileId())
+                .orElseThrow(() -> new IllegalArgumentException(
+                    String.format("Profile with id %d does not exist", command.profileId())));
 
-    @Override
-    public Long handle(CreateCompleteProfileCommand command) {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'handle'");
-    }
+        if (!profile.isPartner()) {
+            throw new IllegalArgumentException("Profile is not assigned as a Partner");
+        }
 
-    @Override
-    public Long handle(CompleteRegistrationCommand command) {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'handle'");
+        // Actualizar información del Partner
+        profile.updatePartner(command.legalName(), command.businessName(), command.taxId(),
+                command.contactEmail(), command.contactPhone(), command.contactPersonName(), command.description());
+
+        profileRepository.save(profile);
+        return Optional.of(profile);
     }
 }

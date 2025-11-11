@@ -3,7 +3,6 @@ package com.hampcoders.glottia.platform.api.profiles.domain.model.aggregates;
 import java.util.Optional;
 
 import com.hampcoders.glottia.platform.api.profiles.domain.model.commands.CreateProfileCommand;
-import com.hampcoders.glottia.platform.api.profiles.domain.model.commands.UpdateProfileCommand;
 import com.hampcoders.glottia.platform.api.profiles.domain.model.entities.BusinessRole;
 import com.hampcoders.glottia.platform.api.profiles.domain.model.entities.Learner;
 import com.hampcoders.glottia.platform.api.profiles.domain.model.entities.Partner;
@@ -21,10 +20,6 @@ import lombok.Getter;
 @Getter
 @Table(name = "profiles")
 public class Profile extends AuditableAbstractAggregateRoot<Profile> {
-
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
 
     @NotNull
     @NotBlank
@@ -105,15 +100,12 @@ public class Profile extends AuditableAbstractAggregateRoot<Profile> {
         String number,
         String city,
         String postalCode,
-        String country,
-        float latitude,
-        float longitude) {
+        String country) {
     
         if (this.partner != null) {
             throw new IllegalStateException("Cannot assign Learner. Profile is already assigned as Partner.");
         }
-        // FIX: Create the Learner entity here
-        Learner newLearner = new Learner(new Address(street, number, city, postalCode, country, latitude, longitude));
+        Learner newLearner = new Learner(new Address(street, number, city, postalCode, country));
         this.learner = newLearner;
     }
     
@@ -146,15 +138,29 @@ public class Profile extends AuditableAbstractAggregateRoot<Profile> {
 
     // --- Updates ---
 
-    public void updateInformation(UpdateProfileCommand command) {
-        this.firstName = command.firstName();
-        this.lastName = command.lastName();
-        this.age = command.age();
-        this.email = command.email();
+    public void updateBasicInformation(String firstName, String lastName, int age, String email) {
+        this.firstName = firstName;
+        this.lastName = lastName;
+        this.age = age;
+        this.email = email;
     }
 
-    // --- Type checking methods ---
+    public void updateLearner(String street, String number, String city, String postalCode,String country) {
+        if (this.learner == null) {
+            throw new IllegalStateException("Cannot update Learner. Profile is not assigned as a Learner.");
+        }
 
+        this.learner.updateAddress(new Address(street, number, city, postalCode, country));
+    }
+
+    public void updatePartner(String legalName, String businessName, String taxId,
+                          String contactEmail, String contactPhone, String contactPersonName, String description) {
+        if (this.partner == null) {
+            throw new IllegalStateException("Cannot update Partner. Profile is not assigned as a Partner.");
+        }
+
+        this.partner.updateInformation(legalName, businessName, taxId, contactEmail, contactPhone, contactPersonName, description);
+    }
     /**
      * Checks if profile is assigned as learner
      */

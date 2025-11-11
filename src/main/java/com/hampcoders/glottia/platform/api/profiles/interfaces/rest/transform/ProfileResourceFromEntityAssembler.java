@@ -6,7 +6,6 @@ import com.hampcoders.glottia.platform.api.profiles.interfaces.rest.resources.Pr
 public class ProfileResourceFromEntityAssembler {
 
     public static ProfileResource toResourceFromEntity(Profile entity) {
-        String info = null;
         String street = null;
         String number = null;
         String city = null;
@@ -25,7 +24,6 @@ public class ProfileResourceFromEntityAssembler {
         switch (entity.getBusinessRole().getRole()) {
             case LEARNER -> {
                 if (entity.getLearner() != null) {
-                    info = entity.getLearner().getFullAddress();
                     street = entity.getLearner().getAddress().street();
                     number = entity.getLearner().getAddress().number();
                     city = entity.getLearner().getAddress().city();
@@ -38,7 +36,6 @@ public class ProfileResourceFromEntityAssembler {
             }
             case PARTNER -> {
                 if (entity.getPartner() != null) {
-                    info = entity.getPartner().getDisplayName();
                     legalName = entity.getPartner().getLegalName();
                     businessName = entity.getPartner().getBusinessName();
                     taxId = entity.getPartner().getTaxId();
