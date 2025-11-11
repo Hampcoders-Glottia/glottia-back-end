@@ -9,8 +9,6 @@ public record AddressResource(
         String number,
         String city,
         String postalCode,
-        String country,
-        float latitude,
-        float longitude
+        String country
 ) {
 }

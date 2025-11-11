@@ -14,9 +14,7 @@ public class LearnerResourceFromEntityAssembler {
             entity.getAddress().number(),
             entity.getAddress().city(),
             entity.getAddress().postalCode(),
-            entity.getAddress().country(),
-            entity.getAddress().latitude(),
-            entity.getAddress().longitude()
+            entity.getAddress().country()
         );
 
         return new LearnerResource(

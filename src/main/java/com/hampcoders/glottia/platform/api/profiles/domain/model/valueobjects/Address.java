@@ -15,7 +15,7 @@ import jakarta.persistence.Embeddable;
  * @field longitude The longitude coordinate of the address.
  */
 @Embeddable
-public record Address(String street,String number, String city, String postalCode, String country, float latitude, float longitude ) {
+public record Address(String street,String number, String city, String postalCode, String country) {
 
     public Address {
         if (street == null || street.isBlank()) {
@@ -36,6 +36,7 @@ public record Address(String street,String number, String city, String postalCod
     }
 
     public Address() {
-        this("", "", "", "", "", 0.0f, 0.0f);
+        this("", "", "", "", "");
     }
+
 }

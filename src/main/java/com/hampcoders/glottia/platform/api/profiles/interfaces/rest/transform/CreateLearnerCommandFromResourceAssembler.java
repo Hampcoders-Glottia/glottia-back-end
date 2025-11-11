@@ -12,9 +12,7 @@ public class CreateLearnerCommandFromResourceAssembler {
                 resource.address().number(),
                 resource.address().city(),
                 resource.address().postalCode(),
-                resource.address().country(),
-                resource.address().latitude(),
-                resource.address().longitude()
+                resource.address().country()
         );
 
         return new CreateLearnerCommand(
