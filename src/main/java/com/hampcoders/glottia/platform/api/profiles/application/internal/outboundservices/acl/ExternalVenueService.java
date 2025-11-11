@@ -12,6 +12,14 @@ public class ExternalVenueService {
         this.venuesContextFacade = venuesContextFacade;
     }
 
-    
+    /**
+     * Creates a venue registry for the given partner if it does not already exist.
+     * @param partnerId The partner ID.
+     */
+    public void createVenueRegistryForPartner(Long partnerId) {
+        if (!venuesContextFacade.exitsVenueRegistryByPartnerId(partnerId)) {
+            venuesContextFacade.createPartnerVenueRegistry(partnerId);
+        }
+    } 
 
 }

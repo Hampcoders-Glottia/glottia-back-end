@@ -1,5 +1,6 @@
 package com.hampcoders.glottia.platform.api.profiles.application.internal.commandservices;
 
+import com.hampcoders.glottia.platform.api.profiles.application.internal.outboundservices.acl.ExternalVenueService;
 import com.hampcoders.glottia.platform.api.profiles.domain.model.aggregates.Profile;
 import com.hampcoders.glottia.platform.api.profiles.domain.model.commands.CreateProfileCommand;
 import com.hampcoders.glottia.platform.api.profiles.domain.model.commands.DeleteProfileCommand;
@@ -32,18 +33,15 @@ public class ProfileCommandServiceImpl implements ProfileCommandService {
 
     private final ProfileRepository profileRepository;
     private final LearnerRepository learnerRepository;
-
+    private final ExternalVenueService externalVenueService;
     private final BusinessRoleRepository businessRoleRepository;
     private final LanguageRepository languageRepository;
     private final CEFRLevelRepository cefrLevelRepository;
 
-    public ProfileCommandServiceImpl(ProfileRepository profileRepository,
-                                      LearnerRepository learnerRepository,
-                                   BusinessRoleRepository businessRoleRepository,
-                                   LanguageRepository languageRepository,
-                                   CEFRLevelRepository cefrLevelRepository) {
+    public ProfileCommandServiceImpl(ProfileRepository profileRepository,LearnerRepository learnerRepository,ExternalVenueService externalVenueService,BusinessRoleRepository businessRoleRepository,LanguageRepository languageRepository,CEFRLevelRepository cefrLevelRepository) {
         this.profileRepository = profileRepository;
         this.learnerRepository = learnerRepository;
+        this.externalVenueService = externalVenueService;
         this.businessRoleRepository = businessRoleRepository;
         this.languageRepository = languageRepository;
         this.cefrLevelRepository = cefrLevelRepository;
@@ -70,6 +68,7 @@ public class ProfileCommandServiceImpl implements ProfileCommandService {
 
         try {
             this.profileRepository.save(profile);
+            if (businessRole.getRole() == BusinessRoles.PARTNER) externalVenueService.createVenueRegistryForPartner(profile.getId());
         } catch (Exception e) {
             throw new IllegalArgumentException("Error while saving profile: " + e.getMessage());
         }
