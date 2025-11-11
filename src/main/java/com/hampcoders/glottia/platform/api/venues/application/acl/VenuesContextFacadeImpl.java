@@ -11,10 +11,12 @@ import com.hampcoders.glottia.platform.api.venues.domain.model.queries.promotion
 import com.hampcoders.glottia.platform.api.venues.domain.model.queries.promotions.GetVenuePromotionByIdQuery;
 import com.hampcoders.glottia.platform.api.venues.domain.model.queries.tables.GetTableAvailabilityFromDateToDateQuery;
 import com.hampcoders.glottia.platform.api.venues.domain.model.queries.tables.GetTableByIdQuery;
+import com.hampcoders.glottia.platform.api.venues.domain.model.queries.venues.GetPartnerVenueRegistryByPartnerIdQuery;
 import com.hampcoders.glottia.platform.api.venues.domain.model.queries.venues.GetVenueByIdQuery;
 import com.hampcoders.glottia.platform.api.venues.domain.model.queries.venues.GetVenuesByPartnerIdQuery;
 import com.hampcoders.glottia.platform.api.venues.domain.model.valueobjects.PartnerId;
 import com.hampcoders.glottia.platform.api.venues.domain.services.PartnerVenueRegistryCommandService;
+import com.hampcoders.glottia.platform.api.venues.domain.services.PartnerVenueRegistryQueryService;
 import com.hampcoders.glottia.platform.api.venues.domain.services.PromotionQueryService;
 import com.hampcoders.glottia.platform.api.venues.domain.services.TableRegistryQueryService;
 import com.hampcoders.glottia.platform.api.venues.domain.services.VenueQueryService;
@@ -30,6 +32,7 @@ public class VenuesContextFacadeImpl implements VenuesContextFacade {
     private final VenueQueryService venueQueryService;
     private final TableRegistryQueryService tableRegistryQueryService;
     private final PromotionQueryService promotionQueryService;
+    private final PartnerVenueRegistryQueryService partnerVenueRegistryQueryService;
 
     @Override
     public Long createPartnerVenueRegistry(Long partnerId) {
@@ -41,6 +44,16 @@ public class VenuesContextFacadeImpl implements VenuesContextFacade {
     public boolean isVenueActive(Long venueId) {
         try {
             return venueQueryService.handle(new GetVenueByIdQuery(venueId)).map(venue -> venue.isActive()).orElse(false);
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    @Override
+    public boolean exitsVenueRegistryByPartnerId(Long partnerId) {
+        try {
+            var query = new GetPartnerVenueRegistryByPartnerIdQuery(new PartnerId(partnerId));
+            return partnerVenueRegistryQueryService.handle(query).isPresent();
         } catch (Exception e) {
             return false;
         }

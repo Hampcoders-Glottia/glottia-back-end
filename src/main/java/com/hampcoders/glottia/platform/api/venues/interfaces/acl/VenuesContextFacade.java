@@ -8,8 +8,21 @@ import java.util.List;
  */
 public interface VenuesContextFacade {
 
+    /**
+     * Creates a partner venue registry.
+     * @param partnerId The partner ID.
+     * @return The created venue registry ID.
+     */    
     Long createPartnerVenueRegistry(Long partnerId);
     
+
+    /**
+     * Fetches the venue registry ID by partner ID.
+     * @param partnerId The partner ID.
+     * @return Optional containing venue registry ID if found, empty otherwise.
+     */
+    boolean exitsVenueRegistryByPartnerId(Long partnerId);
+
      /**
      * Checks if a venue exists and is active.
      * @param venueId The venue ID.
