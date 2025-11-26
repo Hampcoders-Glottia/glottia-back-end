@@ -1,6 +1,7 @@
 package com.hampcoders.glottia.platform.api.venues.application.acl;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 
 import org.springframework.stereotype.Service;
@@ -9,6 +10,8 @@ import com.hampcoders.glottia.platform.api.venues.domain.model.commands.venues.C
 import com.hampcoders.glottia.platform.api.venues.domain.model.queries.promotions.GetActivePromotionsByVenueIdQuery;
 import com.hampcoders.glottia.platform.api.venues.domain.model.queries.promotions.GetPromotionByIdQuery;
 import com.hampcoders.glottia.platform.api.venues.domain.model.queries.promotions.GetVenuePromotionByIdQuery;
+import com.hampcoders.glottia.platform.api.venues.domain.model.queries.tables.GetAvailableTablesAtTimeQuery;
+import com.hampcoders.glottia.platform.api.venues.domain.model.queries.tables.GetTableAvailabilityForTimeSlotQuery;
 import com.hampcoders.glottia.platform.api.venues.domain.model.queries.tables.GetTableAvailabilityFromDateToDateQuery;
 import com.hampcoders.glottia.platform.api.venues.domain.model.queries.tables.GetTableByIdQuery;
 import com.hampcoders.glottia.platform.api.venues.domain.model.queries.venues.GetPartnerVenueRegistryByPartnerIdQuery;
@@ -37,13 +40,14 @@ public class VenuesContextFacadeImpl implements VenuesContextFacade {
     @Override
     public Long createPartnerVenueRegistry(Long partnerId) {
         var command = new CreatePartnerVenueRegistryCommand(new PartnerId(partnerId));
-        return partnerVenueRegistryCommandService.handle(command); 
+        return partnerVenueRegistryCommandService.handle(command);
     }
 
     @Override
     public boolean isVenueActive(Long venueId) {
         try {
-            return venueQueryService.handle(new GetVenueByIdQuery(venueId)).map(venue -> venue.isActive()).orElse(false);
+            return venueQueryService.handle(new GetVenueByIdQuery(venueId)).map(venue -> venue.isActive())
+                    .orElse(false);
         } catch (Exception e) {
             return false;
         }
@@ -73,7 +77,8 @@ public class VenuesContextFacadeImpl implements VenuesContextFacade {
     @Override
     public Long fetchVenueIdByTableId(Long tableId) {
         try {
-            return tableRegistryQueryService.handle(new GetTableByIdQuery(tableId)).map(table -> table.getTableRegistry().getVenue().getId()).orElse(0L);
+            return tableRegistryQueryService.handle(new GetTableByIdQuery(tableId))
+                    .map(table -> table.getTableRegistry().getVenue().getId()).orElse(0L);
         } catch (Exception e) {
             return 0L;
         }
@@ -85,7 +90,7 @@ public class VenuesContextFacadeImpl implements VenuesContextFacade {
             var query = new GetVenuesByPartnerIdQuery(new PartnerId(partnerId));
             var result = venueQueryService.handle(query);
             return result.stream()
-                .anyMatch(venue -> venue.getId().equals(venueId));
+                    .anyMatch(venue -> venue.getId().equals(venueId));
         } catch (Exception e) {
             return false;
         }
@@ -119,11 +124,11 @@ public class VenuesContextFacadeImpl implements VenuesContextFacade {
             var query = new GetVenueByIdQuery(venueId);
             var result = venueQueryService.handle(query);
             return result
-                .map(venue -> String.format("%s, %s, %s",
-                    venue.getAddress().street(),
-                    venue.getAddress().city(),
-                    venue.getAddress().country()))
-                .orElse("");
+                    .map(venue -> String.format("%s, %s, %s",
+                            venue.getAddress().street(),
+                            venue.getAddress().city(),
+                            venue.getAddress().country()))
+                    .orElse("");
         } catch (Exception e) {
             return "";
         }
@@ -131,6 +136,7 @@ public class VenuesContextFacadeImpl implements VenuesContextFacade {
 
     /**
      * Checks if a promotion exists and is active.
+     * 
      * @param promotionId The promotion ID.
      * @return true if promotion is active, false otherwise.
      */
@@ -146,8 +152,9 @@ public class VenuesContextFacadeImpl implements VenuesContextFacade {
 
     /**
      * Checks if a promotion belongs to a specific partner.
+     * 
      * @param promotionId The promotion ID.
-     * @param partnerId The partner ID.
+     * @param partnerId   The partner ID.
      * @return true if promotion belongs to partner, false otherwise.
      */
     public boolean promotionBelongsToPartner(Long promotionId, Long partnerId) {
@@ -155,8 +162,8 @@ public class VenuesContextFacadeImpl implements VenuesContextFacade {
             var query = new GetPromotionByIdQuery(promotionId);
             var result = promotionQueryService.handle(query);
             return result
-                .map(promotion -> promotion.getPartnerId().partnerId().equals(partnerId))
-                .orElse(false);
+                    .map(promotion -> promotion.getPartnerId().partnerId().equals(partnerId))
+                    .orElse(false);
         } catch (Exception e) {
             return false;
         }
@@ -164,6 +171,7 @@ public class VenuesContextFacadeImpl implements VenuesContextFacade {
 
     /**
      * Fetches active promotions for a venue.
+     * 
      * @param venueId The venue ID.
      * @return List of active promotion IDs.
      */
@@ -172,8 +180,8 @@ public class VenuesContextFacadeImpl implements VenuesContextFacade {
             var query = new GetActivePromotionsByVenueIdQuery(venueId);
             var result = promotionQueryService.handle(query);
             return result.stream()
-                .map(vp -> vp.getPromotion().getId())
-                .toList();
+                    .map(vp -> vp.getPromotion().getId())
+                    .toList();
         } catch (Exception e) {
             return List.of();
         }
@@ -181,6 +189,7 @@ public class VenuesContextFacadeImpl implements VenuesContextFacade {
 
     /**
      * Checks if a venue promotion can be redeemed.
+     * 
      * @param venuePromotionId The venue promotion ID.
      * @return true if can be redeemed, false otherwise.
      */
@@ -191,6 +200,54 @@ public class VenuesContextFacadeImpl implements VenuesContextFacade {
             return result.map(vp -> vp.canBeRedeemed()).orElse(false);
         } catch (Exception e) {
             return false;
+        }
+    }
+
+    /**
+     * Checks if a table has an available slot at a specific date and time.
+     * Used by Encounters BC to validate table availability before creating
+     * encounters.
+     * 
+     * @param tableId     The table ID
+     * @param scheduledAt The exact scheduled date and time (encounters are 2 hours)
+     * @return true if an available slot exists at that time, false otherwise
+     */
+    @Override
+    public boolean isTableSlotAvailable(Long tableId, LocalDateTime scheduledAt) {
+        try {
+            var date = scheduledAt.toLocalDate();
+            var startTime = scheduledAt.toLocalTime();
+            var endTime = startTime.plusHours(2); // Encounters are 2 hours
+
+            var query = new GetTableAvailabilityForTimeSlotQuery(tableId, date, startTime, endTime);
+            var result = tableRegistryQueryService.handle(query);
+
+            return result.isPresent() && result.get().getIsAvailable() && !result.get().isReserved();
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    /**
+     * Finds an available table at a venue for a specific date and time.
+     * Used by Encounters BC for auto-assignment of tables to encounters.
+     * 
+     * @param venueId     The venue ID
+     * @param scheduledAt The exact scheduled date and time
+     * @return The table ID if available, or 0L if none found
+     */
+    @Override
+    public Long findAvailableTableAtTime(Long venueId, LocalDateTime scheduledAt) {
+        try {
+            var date = scheduledAt.toLocalDate();
+            var startTime = scheduledAt.toLocalTime();
+
+            var query = new GetAvailableTablesAtTimeQuery(venueId, date, startTime);
+            var result = tableRegistryQueryService.handle(query);
+
+            return result.isEmpty() ? 0L : result.get(0).getId();
+        } catch (Exception e) {
+            return 0L;
         }
     }
 }
