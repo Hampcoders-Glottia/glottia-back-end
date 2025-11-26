@@ -1,5 +1,6 @@
 package com.hampcoders.glottia.platform.api.venues.domain.model.entities;
 
+import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.ArrayList;
@@ -202,6 +203,60 @@ public class Table {
         }
 
         updateStatus(availableStatus);
+    }
+
+    /**
+     * Create a new availability slot for this table
+     * Partners use this to pre-create available time slots for booking
+     * 
+     * @param availabilityDate Specific date (null for recurring)
+     * @param dayOfWeek        Day of week for recurring (null for specific)
+     * @param startHour        Start time
+     * @param endHour          End time
+     */
+    public void createAvailabilitySlot(
+            LocalDate availabilityDate,
+            DayOfWeek dayOfWeek,
+            LocalTime startHour,
+            LocalTime endHour) {
+
+        // Check for overlapping slots on same date
+        if (availabilityDate != null) {
+            boolean hasOverlap = availabilityCalendars.stream()
+                    .anyMatch(ac -> ac.getAvailabilityDate() != null
+                            && ac.getAvailabilityDate().equals(availabilityDate)
+                            && timesOverlap(ac.getStartHour(), ac.getEndHour(), startHour, endHour));
+
+            if (hasOverlap) {
+                throw new IllegalStateException("Overlapping slot exists for this date and time");
+            }
+
+            // Create specific date slot
+            AvailabilityCalendar slot = new AvailabilityCalendar(this, availabilityDate, startHour, endHour);
+            availabilityCalendars.add(slot);
+        }
+        // Check for overlapping slots on same day of week
+        else if (dayOfWeek != null) {
+            boolean hasOverlap = availabilityCalendars.stream()
+                    .anyMatch(ac -> ac.getDayOfWeek() != null
+                            && ac.getDayOfWeek().equals(dayOfWeek)
+                            && timesOverlap(ac.getStartHour(), ac.getEndHour(), startHour, endHour));
+
+            if (hasOverlap) {
+                throw new IllegalStateException("Overlapping slot exists for this day of week and time");
+            }
+
+            // Create recurring pattern slot
+            AvailabilityCalendar slot = new AvailabilityCalendar(this, dayOfWeek, startHour, endHour);
+            availabilityCalendars.add(slot);
+        }
+    }
+
+    /**
+     * Helper method to check if two time ranges overlap
+     */
+    private boolean timesOverlap(LocalTime start1, LocalTime end1, LocalTime start2, LocalTime end2) {
+        return start1.isBefore(end2) && start2.isBefore(end1);
     }
 
     public boolean isAvailable() {

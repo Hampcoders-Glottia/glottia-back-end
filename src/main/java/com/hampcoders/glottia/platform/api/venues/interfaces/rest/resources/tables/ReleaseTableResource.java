@@ -3,9 +3,14 @@ package com.hampcoders.glottia.platform.api.venues.interfaces.rest.resources.tab
 import java.time.LocalDate;
 import java.time.LocalTime;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
+import io.swagger.v3.oas.annotations.media.Schema;
+
 public record ReleaseTableResource(
-        LocalDate releaseDate,
-        LocalTime startHour,
-        LocalTime endHour) {
+        @Schema(description = "Release date", example = "2025-11-26") LocalDate releaseDate,
+
+        @Schema(description = "Start time of 2-hour slot", example = "15:00:00", type = "string") @JsonFormat(pattern = "HH:mm:ss") LocalTime startHour,
+
+        @Schema(description = "End time of 2-hour slot", example = "17:00:00", type = "string") @JsonFormat(pattern = "HH:mm:ss") LocalTime endHour) {
 
 }

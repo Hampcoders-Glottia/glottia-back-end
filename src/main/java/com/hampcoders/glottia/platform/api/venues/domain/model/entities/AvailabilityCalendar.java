@@ -29,8 +29,7 @@ import lombok.Getter;
  */
 @Entity
 @Getter
-@jakarta.persistence.Table(name = "availability_calendars", uniqueConstraints = @jakarta.persistence.UniqueConstraint(columnNames = {
-        "table_id", "availability_date", "day_of_week", "start_hour", "end_hour" }))
+@jakarta.persistence.Table(name = "availability_calendars")
 public class AvailabilityCalendar {
 
     @Id

@@ -1,5 +1,6 @@
 package com.hampcoders.glottia.platform.api.venues.domain.model.aggregates;
 
+import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalTime;
 
@@ -140,6 +141,32 @@ public class TableRegistry extends AuditableAbstractAggregateRoot<TableRegistry>
                 .filter(Table::isAvailable)
                 .filter(table -> table.getCapacity() >= minCapacity)
                 .toList();
+    }
+
+    /**
+     * Create an availability slot for a table
+     * Partners use this to pre-create available time slots for learners to book
+     * 
+     * @param tableId          Table identifier
+     * @param availabilityDate Specific date (null for recurring pattern)
+     * @param dayOfWeek        Day of week for recurring pattern (null for specific
+     *                         date)
+     * @param startHour        Start time of slot
+     * @param endHour          End time of slot (must be 2 hours after start)
+     */
+    public void createAvailabilitySlot(
+            Long tableId,
+            LocalDate availabilityDate,
+            DayOfWeek dayOfWeek,
+            LocalTime startHour,
+            LocalTime endHour) {
+
+        Table table = findTableById(tableId);
+        if (table == null) {
+            throw new IllegalArgumentException("Table not found in this registry");
+        }
+
+        table.createAvailabilitySlot(availabilityDate, dayOfWeek, startHour, endHour);
     }
 
     /**
