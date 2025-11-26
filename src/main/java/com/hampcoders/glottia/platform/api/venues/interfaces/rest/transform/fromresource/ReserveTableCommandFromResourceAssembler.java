@@ -6,8 +6,9 @@ import com.hampcoders.glottia.platform.api.venues.interfaces.rest.resources.tabl
 public class ReserveTableCommandFromResourceAssembler {
     public static ReserveTableCommand toCommandFromResource(Long tableId, ReserveTableResource resource) {
         return new ReserveTableCommand(
-            tableId,
-            resource.reservationDate()
-        );
+                tableId,
+                resource.reservationDate(),
+                resource.startHour(),
+                resource.endHour());
     }
 }

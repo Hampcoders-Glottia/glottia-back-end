@@ -25,165 +25,179 @@ import com.hampcoders.glottia.platform.api.venues.infrastructure.persistence.jpa
 @Service
 public class TableRegistryCommandServiceImpl implements TableRegistryCommandService {
 
-    private final TableRegistryRepository tableRegistryRepository;
-    private final TableRepository tableRepository;
-    private final TableTypeRepository tableTypeRepository;
-    private final TableStatusRepository tableStatusRepository;
+        private final TableRegistryRepository tableRegistryRepository;
+        private final TableRepository tableRepository;
+        private final TableTypeRepository tableTypeRepository;
+        private final TableStatusRepository tableStatusRepository;
 
-    public TableRegistryCommandServiceImpl(
-            TableRegistryRepository tableRegistryRepository,
-            TableRepository tableRepository,
-            TableTypeRepository tableTypeRepository,
-            TableStatusRepository tableStatusRepository) {
-        this.tableRegistryRepository = tableRegistryRepository;
-        this.tableRepository = tableRepository;
-        this.tableTypeRepository = tableTypeRepository;
-        this.tableStatusRepository = tableStatusRepository;
-    }
+        public TableRegistryCommandServiceImpl(
+                        TableRegistryRepository tableRegistryRepository,
+                        TableRepository tableRepository,
+                        TableTypeRepository tableTypeRepository,
+                        TableStatusRepository tableStatusRepository) {
+                this.tableRegistryRepository = tableRegistryRepository;
+                this.tableRepository = tableRepository;
+                this.tableTypeRepository = tableTypeRepository;
+                this.tableStatusRepository = tableStatusRepository;
+        }
 
-    /**
-     * Handle AddTableCommand
-     * Creates a new table in the specified registry
-     */
-    @Override
-    public void handle(AddTableCommand command) {
-        var tableRegistry = tableRegistryRepository.findById(command.tableId())
-                .orElseThrow(() -> new IllegalArgumentException(
-                        "Table registry not found with ID: " + command.tableId()));
+        /**
+         * Handle AddTableCommand
+         * Creates a new table in the specified registry
+         */
+        @Override
+        public void handle(AddTableCommand command) {
+                var tableRegistry = tableRegistryRepository.findById(command.tableId())
+                                .orElseThrow(() -> new IllegalArgumentException(
+                                                "Table registry not found with ID: " + command.tableId()));
 
-        var tableType = this.tableTypeRepository.findByName(TableTypes.valueOf(command.tableType()))
-                .orElseThrow(() -> new IllegalArgumentException(
-                        "Table type not found with name: " + command.tableType()));
+                var tableType = this.tableTypeRepository.findByName(TableTypes.valueOf(command.tableType()))
+                                .orElseThrow(() -> new IllegalArgumentException(
+                                                "Table type not found with name: " + command.tableType()));
 
-        var tableStatus = this.tableStatusRepository.findByName(TableStatuses.valueOf(command.tableStatus()))
-                .orElseThrow(() -> new IllegalArgumentException(
-                        "Table status not found with name: " + command.tableStatus()));
+                var tableStatus = this.tableStatusRepository.findByName(TableStatuses.valueOf(command.tableStatus()))
+                                .orElseThrow(() -> new IllegalArgumentException(
+                                                "Table status not found with name: " + command.tableStatus()));
 
-        tableRegistry.addTable(
-                command.tableNumber(),
-                command.capacity(),
-                tableType,
-                tableStatus
-        );
+                tableRegistry.addTable(
+                                command.tableNumber(),
+                                command.capacity(),
+                                tableType,
+                                tableStatus);
 
-        tableRegistryRepository.save(tableRegistry);
-    }
+                tableRegistryRepository.save(tableRegistry);
+        }
 
-    /**
-     * Handle ReserveTableCommand
-     * Reserves a table for a specific date (typically from Encounters BC)
-     */
-    @Override
-    public void handle(ReserveTableCommand command) {
-        var table = tableRepository.findById(command.tableId())
-                .orElseThrow(() -> new IllegalArgumentException(
-                        "Table not found with ID: " + command.tableId()));
+        /**
+         * Handle ReserveTableCommand
+         * Reserves a table for a specific date and time slot (typically from Encounters
+         * BC)
+         */
+        @Override
+        public void handle(ReserveTableCommand command) {
+                var table = tableRepository.findById(command.tableId())
+                                .orElseThrow(() -> new IllegalArgumentException(
+                                                "Table not found with ID: " + command.tableId()));
 
-        var tableRegistry = table.getTableRegistry();
+                var tableRegistry = table.getTableRegistry();
 
-        tableRegistry.reserveTable(command.tableId(), command.reservationDate());
-        tableRegistryRepository.save(tableRegistry);
+                tableRegistry.reserveTable(
+                                command.tableId(),
+                                command.reservationDate(),
+                                command.startHour(),
+                                command.endHour());
+                tableRegistryRepository.save(tableRegistry);
 
-        // TODO: Emit TableReservedEvent(tableId, venueId, date, encounterId)
-        // Example: domainEventPublisher.publish(new TableReservedEvent(...));
-    }
+                // TODO: Emit TableReservedEvent(tableId, venueId, date, startHour, endHour,
+                // encounterId)
+                // Example: domainEventPublisher.publish(new TableReservedEvent(...));
+        }
 
-    /**
-     * Handle ReleaseTableCommand
-     * Releases a table reservation for a specific date
-     */
-    @Override
-    public void handle(ReleaseTableCommand command) {
-        var table = tableRepository.findById(command.tableId()).orElseThrow(() -> new IllegalArgumentException("Table not found with ID: " + command.tableId()));
-        var tableStatus = tableStatusRepository.findByName(TableStatuses.AVAILABLE)
-                .orElseThrow(() -> new IllegalArgumentException("Table status 'AVAILABLE' not found"));
+        /**
+         * Handle ReleaseTableCommand
+         * Releases a table reservation for a specific time slot
+         */
+        @Override
+        public void handle(ReleaseTableCommand command) {
+                var table = tableRepository.findById(command.tableId())
+                                .orElseThrow(() -> new IllegalArgumentException(
+                                                "Table not found with ID: " + command.tableId()));
+                var tableStatus = tableStatusRepository.findByName(TableStatuses.AVAILABLE)
+                                .orElseThrow(() -> new IllegalArgumentException("Table status 'AVAILABLE' not found"));
 
-        table.release(command.reservationDate(), tableStatus); // ✅ pasa la entidad persistida
+                table.release(
+                                command.reservationDate(),
+                                command.startHour(),
+                                command.endHour(),
+                                tableStatus);
 
-        tableRegistryRepository.save(table.getTableRegistry());
+                tableRegistryRepository.save(table.getTableRegistry());
 
-        // TODO: Emit TableReleasedEvent(tableId, venueId, date)
-    }
+                // TODO: Emit TableReleasedEvent(tableId, venueId, date, startHour, endHour)
+        }
 
-    /**
-     * Handle RemoveTableCommand
-     * Removes a table if it has no active reservations
-     */
-    @Override
-    public void handle(RemoveTableCommand command) {
-        var table = tableRepository.findById(command.tableId())
-                .orElseThrow(() -> new IllegalArgumentException(
-                        "Table not found with ID: " + command.tableId()));
+        /**
+         * Handle RemoveTableCommand
+         * Removes a table if it has no active reservations
+         */
+        @Override
+        public void handle(RemoveTableCommand command) {
+                var table = tableRepository.findById(command.tableId())
+                                .orElseThrow(() -> new IllegalArgumentException(
+                                                "Table not found with ID: " + command.tableId()));
 
-        var tableRegistry = table.getTableRegistry();
+                var tableRegistry = table.getTableRegistry();
 
-        tableRegistry.removeTable(command.tableId());
-        tableRegistryRepository.save(tableRegistry);
-    }
+                tableRegistry.removeTable(command.tableId());
+                tableRegistryRepository.save(tableRegistry);
+        }
 
-    /**
-     * Handle UpdateTableCommand
-     * Updates table capacity and/or type
-     */
-    @Override
-    public void handle(UpdateTableCommand command) {
-        var table = tableRepository.findById(command.tableId())
-                .orElseThrow(() -> new IllegalArgumentException(
-                        "Table not found with ID: " + command.tableId()));
+        /**
+         * Handle UpdateTableCommand
+         * Updates table capacity and/or type
+         */
+        @Override
+        public void handle(UpdateTableCommand command) {
+                var table = tableRepository.findById(command.tableId())
+                                .orElseThrow(() -> new IllegalArgumentException(
+                                                "Table not found with ID: " + command.tableId()));
 
-        command.capacity().ifPresent(table::updateCapacity);
+                command.capacity().ifPresent(table::updateCapacity);
 
-        command.tableTypeId().ifPresent(typeId -> {
-            var tableType = tableTypeRepository.findById(typeId)
-                    .orElseThrow(() -> new IllegalArgumentException(
-                            "Table type not found with ID: " + typeId));
-            table.updateTableType(tableType);
-        });
-        tableRepository.save(table);
-    }
+                command.tableTypeId().ifPresent(typeId -> {
+                        var tableType = tableTypeRepository.findById(typeId)
+                                        .orElseThrow(() -> new IllegalArgumentException(
+                                                        "Table type not found with ID: " + typeId));
+                        table.updateTableType(tableType);
+                });
+                tableRepository.save(table);
+        }
 
-    /**
-     * Handle MarkTableAvailableCommand
-     * Marks a table as generally available
-     */
-    @Override
-    public void handle(MarkTableAvailableCommand command) {
-        var table = tableRepository.findById(command.tableId()).orElseThrow(() -> new IllegalArgumentException("Table not found with ID: " + command.tableId()));
+        /**
+         * Handle MarkTableAvailableCommand
+         * Marks a table as generally available
+         */
+        @Override
+        public void handle(MarkTableAvailableCommand command) {
+                var table = tableRepository.findById(command.tableId()).orElseThrow(
+                                () -> new IllegalArgumentException("Table not found with ID: " + command.tableId()));
 
-        var availableStatus = tableStatusRepository
-                .findByName(TableStatuses.AVAILABLE)
-                .orElseThrow(() -> new IllegalArgumentException("Table status 'AVAILABLE' not found"));
+                var availableStatus = tableStatusRepository
+                                .findByName(TableStatuses.AVAILABLE)
+                                .orElseThrow(() -> new IllegalArgumentException("Table status 'AVAILABLE' not found"));
 
-        table.markAvailable(availableStatus); // ✅ pasa la entidad persistida
+                table.markAvailable(availableStatus); // ✅ pasa la entidad persistida
 
-        tableRepository.save(table);
-}
+                tableRepository.save(table);
+        }
 
-    /**
-     * Handle MarkTableUnavailableCommand
-     * Marks a table as generally unavailable
-     */
-    @Override
-    public void handle(MarkTableUnavailableCommand command) {
-        var table = tableRepository.findById(command.tableId())
-        .orElseThrow(() -> new IllegalArgumentException("Table not found with ID: " + command.tableId()));
+        /**
+         * Handle MarkTableUnavailableCommand
+         * Marks a table as generally unavailable
+         */
+        @Override
+        public void handle(MarkTableUnavailableCommand command) {
+                var table = tableRepository.findById(command.tableId())
+                                .orElseThrow(() -> new IllegalArgumentException(
+                                                "Table not found with ID: " + command.tableId()));
 
-        var unavailableStatus = tableStatusRepository.findByName(TableStatuses.UNAVAILABLE).orElseThrow(() -> new IllegalArgumentException("Table status 'UNAVAILABLE' not found"));
-        table.markUnavailable(unavailableStatus); // ✅ pasa la entidad persistida
-        tableRepository.save(table);
-    }
+                var unavailableStatus = tableStatusRepository.findByName(TableStatuses.UNAVAILABLE).orElseThrow(
+                                () -> new IllegalArgumentException("Table status 'UNAVAILABLE' not found"));
+                table.markUnavailable(unavailableStatus); // ✅ pasa la entidad persistida
+                tableRepository.save(table);
+        }
 
-    /**
-     * Handle MarkTableDateUnavailableCommand
-     * Marks a specific date as unavailable for a table
-     */
-    @Override
-    public void handle(MarkTableDateUnavailableCommand command) {
-        var table = tableRepository.findById(command.tableId())
-                .orElseThrow(() -> new IllegalArgumentException(
-                        "Table not found with ID: " + command.tableId()));
+        /**
+         * Handle MarkTableDateUnavailableCommand
+         * Marks a specific date and time slot as unavailable for a table
+         */
+        @Override
+        public void handle(MarkTableDateUnavailableCommand command) {
+                var table = tableRepository.findById(command.tableId())
+                                .orElseThrow(() -> new IllegalArgumentException(
+                                                "Table not found with ID: " + command.tableId()));
 
-        table.markDateUnavailable(command.date());
-        tableRepository.save(table);
-    }
+                table.markDateUnavailable(command.date(), command.startHour(), command.endHour());
+                tableRepository.save(table);
+        }
 }

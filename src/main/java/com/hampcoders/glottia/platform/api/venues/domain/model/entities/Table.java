@@ -1,6 +1,7 @@
 package com.hampcoders.glottia.platform.api.venues.domain.model.entities;
 
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -69,8 +70,8 @@ public class Table {
     /**
      * Constructor used by TableList.addTable()
      */
-    public Table(TableRegistry tableRegistry, String tableNumber, Integer capacity, 
-                TableType tableType, TableStatus tableStatus) {
+    public Table(TableRegistry tableRegistry, String tableNumber, Integer capacity,
+            TableType tableType, TableStatus tableStatus) {
         this();
         if (tableRegistry == null) {
             throw new IllegalArgumentException("Table registry cannot be null");
@@ -112,22 +113,32 @@ public class Table {
         }
     }
 
-    public void reserve(LocalDate date) {
+    /**
+     * Reserve a table for a specific date and time slot
+     * 
+     * @param date      The reservation date
+     * @param startHour Start time of the reservation (must be 2-hour slot)
+     * @param endHour   End time of the reservation
+     */
+    public void reserve(LocalDate date, LocalTime startHour, LocalTime endHour) {
         if (date.isBefore(LocalDate.now())) {
             throw new IllegalArgumentException("Cannot reserve past dates");
         }
 
-        AvailabilityCalendar calendar = findOrCreateCalendar(date);
+        AvailabilityCalendar calendar = findOrCreateCalendar(date, startHour, endHour);
         calendar.reserve();
-        
+
         // Update status only if reserving for today
         if (date.equals(LocalDate.now())) {
             updateStatus(TableStatus.toTableStatusFromName("RESERVED"));
         }
     }
 
-    public void release(LocalDate date, TableStatus availableStatus) {
-        AvailabilityCalendar calendar = findCalendar(date);
+    /**
+     * Release a table reservation for a specific time slot
+     */
+    public void release(LocalDate date, LocalTime startHour, LocalTime endHour, TableStatus availableStatus) {
+        AvailabilityCalendar calendar = findCalendar(date, startHour, endHour);
         if (calendar != null) {
             calendar.release();
         }
@@ -139,12 +150,20 @@ public class Table {
 
     public void updateStatusBasedOnTodaysCalendar() {
         LocalDate today = LocalDate.now();
-        AvailabilityCalendar todaysCalendar = findCalendar(today);
-        
-        if (todaysCalendar == null || todaysCalendar.getIsAvailable()) {
-            updateStatus(TableStatus.toTableStatusFromName("AVAILABLE"));
-        } else if (todaysCalendar.isReserved()) {
+        List<AvailabilityCalendar> todaysCalendars = findAllCalendarsForDate(today);
+
+        // If any slot is reserved, table is reserved
+        boolean anyReserved = todaysCalendars.stream().anyMatch(AvailabilityCalendar::isReserved);
+        if (anyReserved) {
             updateStatus(TableStatus.toTableStatusFromName("RESERVED"));
+            return;
+        }
+
+        // If all slots are available or no slots exist, table is available
+        boolean allAvailable = todaysCalendars.isEmpty() ||
+                todaysCalendars.stream().allMatch(cal -> cal.getIsAvailable());
+        if (allAvailable) {
+            updateStatus(TableStatus.toTableStatusFromName("AVAILABLE"));
         } else {
             updateStatus(TableStatus.toTableStatusFromName("UNAVAILABLE"));
         }
@@ -154,16 +173,19 @@ public class Table {
         updateStatus(unavailableStatus);
 
         LocalDate today = LocalDate.now();
-        AvailabilityCalendar todaysCalendar = findCalendar(today);
-        if (todaysCalendar != null && !todaysCalendar.isReserved()) {
-            todaysCalendar.markUnavailable();
-        }
+        List<AvailabilityCalendar> todaysCalendars = findAllCalendarsForDate(today);
+        todaysCalendars.stream()
+                .filter(cal -> !cal.isReserved())
+                .forEach(AvailabilityCalendar::markUnavailable);
     }
 
-    public void markDateUnavailable(LocalDate date) {
-        AvailabilityCalendar calendar = findOrCreateCalendar(date);
+    /**
+     * Mark a specific time slot as unavailable
+     */
+    public void markDateUnavailable(LocalDate date, LocalTime startHour, LocalTime endHour) {
+        AvailabilityCalendar calendar = findOrCreateCalendar(date, startHour, endHour);
         calendar.markUnavailable();
-        
+
         // Update general status if it's today
         if (date.equals(LocalDate.now())) {
             updateStatus(TableStatus.toTableStatusFromName("UNAVAILABLE"));
@@ -172,13 +194,15 @@ public class Table {
 
     public void markAvailable(TableStatus availableStatus) {
         LocalDate today = LocalDate.now();
-        AvailabilityCalendar todaysCalendar = findCalendar(today);
+        List<AvailabilityCalendar> todaysCalendars = findAllCalendarsForDate(today);
 
-        if (todaysCalendar != null && todaysCalendar.isReserved())
-            throw new IllegalStateException("Cannot mark as available - table is reserved for today");
-        
-        updateStatus(availableStatus); 
-}
+        boolean anyReserved = todaysCalendars.stream().anyMatch(AvailabilityCalendar::isReserved);
+        if (anyReserved) {
+            throw new IllegalStateException("Cannot mark as available - table has reserved slots for today");
+        }
+
+        updateStatus(availableStatus);
+    }
 
     public boolean isAvailable() {
         return tableStatus.getStringStatusName().equals("AVAILABLE");
@@ -207,22 +231,35 @@ public class Table {
         this.tableStatus = newStatus;
     }
 
-    private AvailabilityCalendar findOrCreateCalendar(LocalDate date) {
+    private AvailabilityCalendar findOrCreateCalendar(LocalDate date, LocalTime startHour, LocalTime endHour) {
         return availabilityCalendars.stream()
-                .filter(cal -> cal.getAvailabilityDate().equals(date))
+                .filter(cal -> cal.getAvailabilityDate() != null &&
+                        cal.getAvailabilityDate().equals(date) &&
+                        cal.getStartHour().equals(startHour) &&
+                        cal.getEndHour().equals(endHour))
                 .findFirst()
                 .orElseGet(() -> {
-                    AvailabilityCalendar newCalendar = new AvailabilityCalendar(this, date);
+                    AvailabilityCalendar newCalendar = new AvailabilityCalendar(this, date, startHour, endHour);
                     availabilityCalendars.add(newCalendar);
                     return newCalendar;
                 });
     }
 
-    private AvailabilityCalendar findCalendar(LocalDate date) {
+    private AvailabilityCalendar findCalendar(LocalDate date, LocalTime startHour, LocalTime endHour) {
         return availabilityCalendars.stream()
-                .filter(cal -> cal.getAvailabilityDate().equals(date))
+                .filter(cal -> cal.getAvailabilityDate() != null &&
+                        cal.getAvailabilityDate().equals(date) &&
+                        cal.getStartHour().equals(startHour) &&
+                        cal.getEndHour().equals(endHour))
                 .findFirst()
                 .orElse(null);
+    }
+
+    private List<AvailabilityCalendar> findAllCalendarsForDate(LocalDate date) {
+        return availabilityCalendars.stream()
+                .filter(cal -> cal.getAvailabilityDate() != null &&
+                        cal.getAvailabilityDate().equals(date))
+                .toList();
     }
 
     public String getTableTypeName() {
