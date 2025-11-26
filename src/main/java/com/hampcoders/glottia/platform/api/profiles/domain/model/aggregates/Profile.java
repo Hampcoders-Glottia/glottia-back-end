@@ -42,7 +42,7 @@ public class Profile extends AuditableAbstractAggregateRoot<Profile> {
     @Column(name = "email", length = 100, nullable = false, unique = true)
     private String email;
 
-    @OneToOne(fetch = FetchType.EAGER)
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "business_role_id", nullable = false)
     private BusinessRole businessRole;
 
@@ -78,7 +78,7 @@ public class Profile extends AuditableAbstractAggregateRoot<Profile> {
         this.age = command.age();
         this.email = command.email();
         this.businessRole = BusinessRole.toBusinessRoleFromName(command.businessRole());
-        
+
     }
 
     // --- Role assignment ---
@@ -94,23 +94,22 @@ public class Profile extends AuditableAbstractAggregateRoot<Profile> {
         this.learner = learner;
     }
 
-
     public void assignAsLearner(
-        String street,
-        String number,
-        String city,
-        String postalCode,
-        String country) {
-    
+            String street,
+            String number,
+            String city,
+            String postalCode,
+            String country) {
+
         if (this.partner != null) {
             throw new IllegalStateException("Cannot assign Learner. Profile is already assigned as Partner.");
         }
         Learner newLearner = new Learner(new Address(street, number, city, postalCode, country));
         this.learner = newLearner;
     }
-    
+
     /**
-     * Assigns this profile as a Partner with business information  
+     * Assigns this profile as a Partner with business information
      * Business rule: Profile can only be one type at a time
      */
     public void assignAsPartner(Partner partner) {
@@ -119,20 +118,22 @@ public class Profile extends AuditableAbstractAggregateRoot<Profile> {
         }
         this.partner = partner;
     }
+
     public void assignAsPartner(
-        String legalName,
-        String businessName,
-        String taxId,
-        String contactEmail,
-        String contactPhone,
-        String contactPersonName,
-        String description) {
-        
+            String legalName,
+            String businessName,
+            String taxId,
+            String contactEmail,
+            String contactPhone,
+            String contactPersonName,
+            String description) {
+
         if (this.learner != null) {
             throw new IllegalStateException("Cannot assign Partner. Profile is already assigned as Learner.");
         }
         // FIX: Create the Partner entity here
-        Partner newPartner = new Partner(legalName, businessName, taxId, contactEmail, contactPhone, contactPersonName, description);
+        Partner newPartner = new Partner(legalName, businessName, taxId, contactEmail, contactPhone, contactPersonName,
+                description);
         this.partner = newPartner;
     }
 
@@ -145,7 +146,7 @@ public class Profile extends AuditableAbstractAggregateRoot<Profile> {
         this.email = email;
     }
 
-    public void updateLearner(String street, String number, String city, String postalCode,String country) {
+    public void updateLearner(String street, String number, String city, String postalCode, String country) {
         if (this.learner == null) {
             throw new IllegalStateException("Cannot update Learner. Profile is not assigned as a Learner.");
         }
@@ -154,13 +155,15 @@ public class Profile extends AuditableAbstractAggregateRoot<Profile> {
     }
 
     public void updatePartner(String legalName, String businessName, String taxId,
-                          String contactEmail, String contactPhone, String contactPersonName, String description) {
+            String contactEmail, String contactPhone, String contactPersonName, String description) {
         if (this.partner == null) {
             throw new IllegalStateException("Cannot update Partner. Profile is not assigned as a Partner.");
         }
 
-        this.partner.updateInformation(legalName, businessName, taxId, contactEmail, contactPhone, contactPersonName, description);
+        this.partner.updateInformation(legalName, businessName, taxId, contactEmail, contactPhone, contactPersonName,
+                description);
     }
+
     /**
      * Checks if profile is assigned as learner
      */
