@@ -25,9 +25,13 @@ import java.util.stream.Collectors;
 public class LoyaltyController {
 
     private final LoyaltyAccountQueryService loyaltyAccountQueryService;
-    // private final ProfilesContextFacade profilesContextFacade; // Inyectar para obtener nombres
+    // private final ProfilesContextFacade profilesContextFacade; // Inyectar para
+    // obtener nombres
 
-    public LoyaltyController(LoyaltyAccountQueryService loyaltyAccountQueryService /*, ProfilesContextFacade profilesContextFacade */) {
+    public LoyaltyController(LoyaltyAccountQueryService loyaltyAccountQueryService /*
+                                                                                    * , ProfilesContextFacade
+                                                                                    * profilesContextFacade
+                                                                                    */) {
         this.loyaltyAccountQueryService = loyaltyAccountQueryService;
         // this.profilesContextFacade = profilesContextFacade;
     }
@@ -49,8 +53,7 @@ public class LoyaltyController {
     @GetMapping("/leaderboard")
     public ResponseEntity<List<LoyaltyLeaderboardResource>> getLeaderboard(
             @RequestParam(defaultValue = "10") Integer top,
-            @RequestParam(defaultValue = "ALL_TIME") String period
-    ) {
+            @RequestParam(defaultValue = "ALL_TIME") String period) {
         var query = new GetLeaderboardQuery(top, period);
         var accounts = loyaltyAccountQueryService.handle(query); // Devuelve List<Object> que es List<LoyaltyAccount>
 
@@ -58,11 +61,12 @@ public class LoyaltyController {
                 .map(obj -> (LoyaltyAccount) obj)
                 .map(account -> {
                     // TODO: Usar ACL para obtener el nombre del Learner
-                    // String learnerName = profilesContextFacade.fetchLearnerName(account.getLearnerId());
+                    // String learnerName =
+                    // profilesContextFacade.fetchLearnerName(account.getLearnerId());
                     String learnerName = "Learner " + account.getLearnerId().learnerId(); // Placeholder
-                    return new LoyaltyLeaderboardResource(account.getLearnerId().learnerId(), account.getPoints(), learnerName);
-                })
-                .collect(Collectors.toList());
+                    return new LoyaltyLeaderboardResource(account.getLearnerId().learnerId(), account.getPoints(),
+                            learnerName);
+                }).collect(Collectors.toList());
 
         return ResponseEntity.ok(resources);
     }
@@ -75,7 +79,7 @@ public class LoyaltyController {
 
         var query = new GetUnlockedBadgesQuery(learnerId);
         var badges = loyaltyAccountQueryService.handle(query);
-        
+
         // La lógica de badges no está implementada, devuelve vacío
         return ResponseEntity.ok(badges);
     }
