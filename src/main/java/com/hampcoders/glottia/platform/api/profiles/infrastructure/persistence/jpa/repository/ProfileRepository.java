@@ -32,4 +32,6 @@ public interface ProfileRepository extends JpaRepository<Profile, Long> {
     
     @Query("SELECT p.partner FROM Profile p WHERE p.id = :profileId AND p.partner IS NOT NULL")
     Optional<Partner> findPartnerByProfileId(@Param("profileId") Long profileId);
+
+    boolean existsByEmailAndIdIsNot(String email, Long profileId);
 }
