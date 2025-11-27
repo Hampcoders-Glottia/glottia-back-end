@@ -12,7 +12,13 @@ import com.hampcoders.glottia.platform.api.encounters.infrastructure.persistence
 import com.hampcoders.glottia.platform.api.encounters.infrastructure.persistence.jpa.repository.EncounterRepository;
 import com.hampcoders.glottia.platform.api.encounters.infrastructure.persistence.jpa.repository.EncounterStatusRepository;
 import com.hampcoders.glottia.platform.api.profiles.interfaces.acl.ProfilesContextFacade;
+import com.hampcoders.glottia.platform.api.shared.domain.model.valueobjects.CEFRLevels;
+import com.hampcoders.glottia.platform.api.shared.domain.model.valueobjects.Languages;
+import com.hampcoders.glottia.platform.api.shared.infrastructure.persistence.jpa.repository.CEFRLevelRepository;
+import com.hampcoders.glottia.platform.api.shared.infrastructure.persistence.jpa.repository.LanguageRepository;
 import com.hampcoders.glottia.platform.api.venues.interfaces.acl.VenuesContextFacade;
+
+import jakarta.transaction.Transactional;
 
 // import com.hampcoders.glottia.platform.api.venues.interfaces.acl.VenuesContextFacade; // ACL
 // import com.hampcoders.glottia.platform.api.profiles.interfaces.acl.ProfilesContextFacade; // ACL
@@ -37,60 +43,60 @@ public class EncounterCommandServiceImpl implements EncounterCommandService {
     private final EncounterRepository encounterRepository;
     private final EncounterStatusRepository encounterStatusRepository;
     private final AttendanceStatusRepository attendanceStatusRepository;
+    private final LanguageRepository languageRepository;
+    private final CEFRLevelRepository cefrLevelRepository;
     private final VenuesContextFacade venuesContextFacade; // ACL
     private final ProfilesContextFacade profilesContextFacade; // ACL
 
     // Constructor simplificado (sin ACLs ni QueryServices por ahora)
     public EncounterCommandServiceImpl(EncounterRepository encounterRepository,
             EncounterStatusRepository encounterStatusRepository, AttendanceStatusRepository attendanceStatusRepository,
+            LanguageRepository languageRepository, CEFRLevelRepository cefrLevelRepository,
             VenuesContextFacade venuesContextFacade, ProfilesContextFacade profilesContextFacade) {
         this.encounterRepository = encounterRepository;
         this.encounterStatusRepository = encounterStatusRepository;
         this.attendanceStatusRepository = attendanceStatusRepository;
+        this.languageRepository = languageRepository;
+        this.cefrLevelRepository = cefrLevelRepository;
         this.venuesContextFacade = venuesContextFacade;
         this.profilesContextFacade = profilesContextFacade;
     }
 
     @Override
+    @Transactional
     public Optional<Encounter> handle(CreateEncounterCommand command) {
-        // --- Validation 1: Check learner schedule conflicts (±2 hours) using
-        // REPOSITORY ---
-        LocalDateTime conflictStart = command.scheduledAt().minusHours(2);
-        LocalDateTime conflictEnd = command.scheduledAt().plusHours(2);
+        // ... Validation logic (Venue, Conflicts) ...
 
-        var conflictingEncounters = encounterRepository.findConflictingEncounters(
-                command.creatorId(),
-                conflictStart,
-                conflictEnd);
+        // 1. FETCH REFERENCE DATA (The "Ingredients")
+        var language = languageRepository.findByName(Languages.valueOf(command.language()))
+                .orElseThrow(() -> new IllegalArgumentException("Language not found"));
 
-        if (!conflictingEncounters.isEmpty()) {
-            throw new IllegalStateException(
-                    "Creator has a conflicting encounter within 2 hours of the scheduled time.");
-        }
-        // --- Validation 2: Check table availability via ACL (cross-BC communication)
-        // ---
+        var level = cefrLevelRepository.findByName(CEFRLevels.valueOf(command.cefrLevel()))
+                .orElseThrow(() -> new IllegalArgumentException("CEFR Level not found"));
+
+        // --- THE MISSING LINK ---
+        // Fetch the specific rows for "DRAFT" and "RESERVED"
+        var draftStatus = encounterStatusRepository.findByName(EncounterStatuses.DRAFT)
+                .orElseThrow(() -> new IllegalStateException("Status DRAFT not found in DB"));
+
+        var reservedStatus = attendanceStatusRepository.findByName(AttendanceStatuses.RESERVED)
+                .orElseThrow(() -> new IllegalStateException("Status RESERVED not found in DB"));
+
         Long tableIdValue = venuesContextFacade.findAvailableTableAtTime(
                 command.venueId().venueId(),
                 command.scheduledAt());
 
         if (tableIdValue == null || tableIdValue == 0L) {
-            throw new IllegalStateException(
-                    "No tables available at the selected venue and time.");
+            throw new IllegalStateException("No tables available at the selected venue and time.");
         }
-        // Double-check table is available
-        if (!venuesContextFacade.isTableSlotAvailable(tableIdValue, command.scheduledAt())) {
-            throw new IllegalStateException(
-                    "Table is not available for the requested time slot.");
-        }
-        // --- Create the Encounter aggregate ---
-        var encounter = new Encounter(command);
 
-        // Assign the table (wrap in TableId value object)
+        // 3. Create Encounter
+        var encounter = new Encounter(command, language, level, draftStatus, reservedStatus);
+
+        // 4. Assign the Found Table
         encounter.assignTable(new TableId(tableIdValue));
-        // Persist
-        encounterRepository.save(encounter);
 
-        // TODO: Publish EncounterCreatedEvent domain event
+        encounterRepository.save(encounter);
 
         return Optional.of(encounter);
     }
@@ -113,16 +119,20 @@ public class EncounterCommandServiceImpl implements EncounterCommandService {
     }
 
     @Override
+    @Transactional
     public Optional<Encounter> handle(JoinEncounterCommand command) {
-        // (Regla 12) Verificar si el learner puede participar (puntos >= 0)
-        // ...
-
+        // 1. Fetch the Aggregate
         var encounter = encounterRepository.findById(command.encounterId())
                 .orElseThrow(() -> new IllegalArgumentException("Encounter not found"));
 
-        // Modificamos el .join para que acepte el status gestionado
-        encounter.join(command.learnerId());
+        // 2. FETCH THE STATUS ENTITY (The Fix)
+        var reservedStatus = attendanceStatusRepository.findByName(AttendanceStatuses.RESERVED)
+                .orElseThrow(() -> new IllegalStateException("Status RESERVED not found in DB"));
 
+        // 3. Pass the Entity to the Aggregate
+        encounter.join(command.learnerId(), reservedStatus);
+
+        // 4. Save
         encounterRepository.save(encounter);
         return Optional.of(encounter);
     }

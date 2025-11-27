@@ -1,5 +1,6 @@
 package com.hampcoders.glottia.platform.api.profiles.application.internal.commandservices;
 
+import com.hampcoders.glottia.platform.api.profiles.application.internal.outboundservices.acl.ExternalEncounterService;
 import com.hampcoders.glottia.platform.api.profiles.application.internal.outboundservices.acl.ExternalVenueService;
 import com.hampcoders.glottia.platform.api.profiles.domain.model.aggregates.Profile;
 import com.hampcoders.glottia.platform.api.profiles.domain.model.commands.CreateProfileCommand;
@@ -34,14 +35,19 @@ public class ProfileCommandServiceImpl implements ProfileCommandService {
     private final ProfileRepository profileRepository;
     private final LearnerRepository learnerRepository;
     private final ExternalVenueService externalVenueService;
+    private final ExternalEncounterService externalEncounterService;
     private final BusinessRoleRepository businessRoleRepository;
     private final LanguageRepository languageRepository;
     private final CEFRLevelRepository cefrLevelRepository;
 
-    public ProfileCommandServiceImpl(ProfileRepository profileRepository,LearnerRepository learnerRepository,ExternalVenueService externalVenueService,BusinessRoleRepository businessRoleRepository,LanguageRepository languageRepository,CEFRLevelRepository cefrLevelRepository) {
+    public ProfileCommandServiceImpl(ProfileRepository profileRepository, LearnerRepository learnerRepository,
+            ExternalVenueService externalVenueService, ExternalEncounterService externalEncounterService,
+            BusinessRoleRepository businessRoleRepository, LanguageRepository languageRepository,
+            CEFRLevelRepository cefrLevelRepository) {
         this.profileRepository = profileRepository;
         this.learnerRepository = learnerRepository;
         this.externalVenueService = externalVenueService;
+        this.externalEncounterService = externalEncounterService;
         this.businessRoleRepository = businessRoleRepository;
         this.languageRepository = languageRepository;
         this.cefrLevelRepository = cefrLevelRepository;
@@ -54,21 +60,28 @@ public class ProfileCommandServiceImpl implements ProfileCommandService {
         if (this.profileRepository.existsByFullName(fullName)) {
             throw new IllegalArgumentException("Profile with full name " + fullName + " already exists");
         }
-        
-        var businessRole = businessRoleRepository.findByRole(BusinessRoles.valueOf(command.businessRole())).orElseThrow(() -> new IllegalStateException("Role with name " + command.businessRole() + " not found"));
 
+        var businessRole = businessRoleRepository.findByRole(BusinessRoles.valueOf(command.businessRole())).orElseThrow(
+                () -> new IllegalStateException("Role with name " + command.businessRole() + " not found"));
 
-        var profile = new Profile(command.firstName(),command.lastName(),command.age(), command.email(), businessRole);
+        var profile = new Profile(command.firstName(), command.lastName(), command.age(), command.email(),
+                businessRole);
 
-        if(businessRole.getRole() == BusinessRoles.LEARNER) {
-            profile.assignAsLearner(new Learner(new Address(command.street(), command.number(), command.city(), command.postalCode(), command.country())));
+        if (businessRole.getRole() == BusinessRoles.LEARNER) {
+            profile.assignAsLearner(new Learner(new Address(command.street(), command.number(), command.city(),
+                    command.postalCode(), command.country())));
         } else if (businessRole.getRole() == BusinessRoles.PARTNER) {
-            profile.assignAsPartner(new Partner(command.legalName(), command.businessName(), command.taxId(), command.contactEmail(), command.contactPhone(), command.contactPersonName(), command.description()));
+            profile.assignAsPartner(
+                    new Partner(command.legalName(), command.businessName(), command.taxId(), command.contactEmail(),
+                            command.contactPhone(), command.contactPersonName(), command.description()));
         }
 
         try {
             this.profileRepository.save(profile);
-            if (businessRole.getRole() == BusinessRoles.PARTNER) externalVenueService.createVenueRegistryForPartner(profile.getId());
+            if (businessRole.getRole() == BusinessRoles.PARTNER)
+                externalVenueService.createVenueRegistryForPartner(profile.getPartner().getId());
+            else if (businessRole.getRole() == BusinessRoles.LEARNER)
+                externalEncounterService.createLoyaltyAccountForLearner(profile.getLearner().getId());
         } catch (Exception e) {
             throw new IllegalArgumentException("Error while saving profile: " + e.getMessage());
         }
@@ -81,19 +94,19 @@ public class ProfileCommandServiceImpl implements ProfileCommandService {
         // Buscar el perfil
         Profile profile = profileRepository.findById(command.profileId())
                 .orElseThrow(() -> new IllegalArgumentException(
-                    String.format("Profile with id %d does not exist", command.profileId())));
+                        String.format("Profile with id %d does not exist", command.profileId())));
 
         // Validar unicidad del email (excluyendo el perfil actual)
         if (profileRepository.existsByEmailAndIdIsNot(command.email(), command.profileId())) {
             throw new IllegalArgumentException(
-                String.format("Profile with email %s already exists", command.email()));
+                    String.format("Profile with email %s already exists", command.email()));
         }
 
         // Validar unicidad del nombre completo (excluyendo el perfil actual)
         String fullName = command.firstName() + " " + command.lastName();
         if (profileRepository.existsByFullNameAndIdIsNot(fullName, command.profileId())) {
             throw new IllegalArgumentException(
-                String.format("Profile with full name '%s' already exists", fullName));
+                    String.format("Profile with full name '%s' already exists", fullName));
         }
 
         // Actualizar información básica
@@ -104,13 +117,14 @@ public class ProfileCommandServiceImpl implements ProfileCommandService {
         if (profile.isLearner()) {
             System.out.println("DEBUG: Profile is Learner, updating learner fields");
             if (command.street() != null || command.city() != null || command.country() != null) {
-                profile.updateLearner(command.street(), command.number(), command.city(), command.postalCode(), command.country());
+                profile.updateLearner(command.street(), command.number(), command.city(), command.postalCode(),
+                        command.country());
             }
         }
 
         System.out.println("DEBUG: Saving profile");
         profileRepository.save(profile);
-        profileRepository.flush();  // Fuerza el guardado inmediato
+        profileRepository.flush(); // Fuerza el guardado inmediato
         System.out.println("DEBUG: Profile saved and flushed successfully");
 
         return Optional.of(profile);
@@ -139,7 +153,8 @@ public class ProfileCommandServiceImpl implements ProfileCommandService {
                 .orElseThrow(() -> new IllegalArgumentException("Language not found with ID: " + command.languageId()));
 
         CEFRLevel cefrLevel = cefrLevelRepository.findById(command.cefrLevelId())
-                .orElseThrow(() -> new IllegalArgumentException("CEFRLevel not found with ID: " + command.cefrLevelId()));
+                .orElseThrow(
+                        () -> new IllegalArgumentException("CEFRLevel not found with ID: " + command.cefrLevelId()));
 
         learner.addLanguage(language, cefrLevel, command.isLearning());
 
@@ -156,15 +171,15 @@ public class ProfileCommandServiceImpl implements ProfileCommandService {
     public void handle(RemoveLanguageFromLearnerCommand command) {
         Learner learner = learnerRepository.findById(command.learnerId())
                 .orElseThrow(() -> new IllegalArgumentException(
-                    String.format("Learner not found with ID: %d", command.learnerId())));
+                        String.format("Learner not found with ID: %d", command.learnerId())));
 
         Language language = languageRepository.findById(command.languageId())
                 .orElseThrow(() -> new IllegalArgumentException(
-                    String.format("Language not found with ID: %d", command.languageId())));
+                        String.format("Language not found with ID: %d", command.languageId())));
 
         if (!learner.hasLanguage(language)) {
             throw new IllegalArgumentException(
-                String.format("Learner does not have language: %s", language.getStringName()));
+                    String.format("Learner does not have language: %s", language.getStringName()));
         }
 
         learner.removeLanguage(language);
@@ -177,22 +192,22 @@ public class ProfileCommandServiceImpl implements ProfileCommandService {
     public Optional<LearnerLanguageItem> handle(UpdateLearnerLanguageCommand command) {
         Learner learner = learnerRepository.findById(command.learnerId())
                 .orElseThrow(() -> new IllegalArgumentException(
-                    String.format("Learner not found with ID: %d", command.learnerId())));
+                        String.format("Learner not found with ID: %d", command.learnerId())));
 
         Language language = languageRepository.findById(command.languageId())
                 .orElseThrow(() -> new IllegalArgumentException(
-                    String.format("Language not found with ID: %d", command.languageId())));
+                        String.format("Language not found with ID: %d", command.languageId())));
 
         // Validar que el learner tiene este idioma
         if (!learner.hasLanguage(language)) {
             throw new IllegalArgumentException(
-                String.format("Learner does not have language: %s", language.getStringName()));
+                    String.format("Learner does not have language: %s", language.getStringName()));
         }
 
         if (command.cefrLevelId() != null) {
             CEFRLevel cefrLevel = cefrLevelRepository.findById(command.cefrLevelId())
                     .orElseThrow(() -> new IllegalArgumentException(
-                        String.format("CEFR Level not found with ID: %d", command.cefrLevelId())));
+                            String.format("CEFR Level not found with ID: %d", command.cefrLevelId())));
             learner.updateLanguageLevel(language, cefrLevel);
         }
 
@@ -212,14 +227,15 @@ public class ProfileCommandServiceImpl implements ProfileCommandService {
     public Optional<Profile> handle(UpdateLearnerCommand command) {
         Profile profile = profileRepository.findById(command.profileId())
                 .orElseThrow(() -> new IllegalArgumentException(
-                    String.format("Profile with id %d does not exist", command.profileId())));
+                        String.format("Profile with id %d does not exist", command.profileId())));
 
         if (!profile.isLearner()) {
             throw new IllegalArgumentException("Profile is not assigned as a Learner");
         }
 
         // Actualizar información del Learner
-        profile.updateLearner(command.street(), command.number(), command.city(), command.postalCode(),command.country());
+        profile.updateLearner(command.street(), command.number(), command.city(), command.postalCode(),
+                command.country());
 
         profileRepository.save(profile);
         return Optional.of(profile);
@@ -230,7 +246,7 @@ public class ProfileCommandServiceImpl implements ProfileCommandService {
     public Optional<Profile> handle(UpdatePartnerCommand command) {
         Profile profile = profileRepository.findById(command.profileId())
                 .orElseThrow(() -> new IllegalArgumentException(
-                    String.format("Profile with id %d does not exist", command.profileId())));
+                        String.format("Profile with id %d does not exist", command.profileId())));
 
         if (!profile.isPartner()) {
             throw new IllegalArgumentException("Profile is not assigned as a Partner");

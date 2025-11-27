@@ -31,6 +31,13 @@ public interface EncountersContextFacade {
     Long createLoyaltyAccount(Long learnerId);
 
     /**
+     * Verifies if a Learner has a loyalty account.
+     * 
+     * @param learnerId The Learner ID
+     * @return true if the Learner has a loyalty account, false otherwise.
+     */
+    boolean existsLoyaltyAccountByLearnerId(Long learnerId);
+    /**
      * Publica un evento cuando un Learner se registra (Check-in).
      * Escuchado por Analytics BC.
      * (Esta es una implementación de Event Handler, pero la fachada puede exponer

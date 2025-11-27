@@ -13,15 +13,19 @@ import java.time.temporal.ChronoUnit;
 
 /**
  * Attendance entity.
+ * 
  * @summary
- * This class represents the attendance of a learner to an encounter.
- * It tracks the status of the attendance (reserved, checked-in, no-show, cancelled),
- * the timestamps for reservation and check-in, and points awarded or penalized.
- * It extends AuditableModel to include createdAt and updatedAt timestamps.
+ *          This class represents the attendance of a learner to an encounter.
+ *          It tracks the status of the attendance (reserved, checked-in,
+ *          no-show, cancelled),
+ *          the timestamps for reservation and check-in, and points awarded or
+ *          penalized.
+ *          It extends AuditableModel to include createdAt and updatedAt
+ *          timestamps.
  */
 @Getter
 @Entity(name = "attendances")
-public class Attendance extends AuditableModel { 
+public class Attendance extends AuditableModel {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -68,7 +72,8 @@ public class Attendance extends AuditableModel {
     private Integer pointsAwarded = 0;
 
     /**
-     * Points penalized for this attendance (e.g., -15 for no-show, -5 for late cancel).
+     * Points penalized for this attendance (e.g., -15 for no-show, -5 for late
+     * cancel).
      */
     @Column(name = "points_penalized", nullable = false)
     private Integer pointsPenalized = 0;
@@ -76,7 +81,8 @@ public class Attendance extends AuditableModel {
     /**
      * JPA constructor (protected).
      */
-    protected Attendance() {}
+    protected Attendance() {
+    }
 
     /**
      * Create a new Attendance with RESERVED status.
@@ -84,7 +90,7 @@ public class Attendance extends AuditableModel {
      * @param encounter The encounter this attendance belongs to
      * @param learnerId The learner's ID
      */
-    public Attendance(Encounter encounter, LearnerId learnerId) {
+    public Attendance(Encounter encounter, LearnerId learnerId, AttendanceStatus status) {
         if (encounter == null) {
             throw new IllegalArgumentException("Encounter cannot be null");
         }
@@ -92,9 +98,13 @@ public class Attendance extends AuditableModel {
             throw new IllegalArgumentException("LearnerId cannot be null");
         }
 
+        if (status == null)
+            throw new IllegalArgumentException("Status cannot be null"); // Fail fast
+
         this.encounter = encounter;
         this.learnerId = learnerId;
-        this.status = AttendanceStatus.getDefaultAttendanceStatus(); // RESERVED
+        this.status = status; // ASSIGN MANAGED ENTITY
+
         this.reservedAt = LocalDateTime.now();
         this.pointsAwarded = 0;
         this.pointsPenalized = 0;
@@ -104,30 +114,36 @@ public class Attendance extends AuditableModel {
 
     /**
      * Mark attendance as checked-in.
-     * <p><strong>Business Rule:</strong> Can only check-in if status is RESERVED.</p>
+     * <p>
+     * <strong>Business Rule:</strong> Can only check-in if status is RESERVED.
+     * </p>
      * 
      * @throws IllegalStateException if status is not RESERVED
      */
     public void checkIn() {
         if (!this.status.isReserved()) {
             throw new IllegalStateException(
-                "Cannot check-in. Current status is " + this.status.getStringName() + 
-                ". Check-in is only allowed for RESERVED attendances."
-            );
+                    "Cannot check-in. Current status is " + this.status.getStringName() +
+                            ". Check-in is only allowed for RESERVED attendances.");
         }
 
         // Transition to CHECKED_IN
         transitionTo(AttendanceStatuses.CHECKED_IN);
         this.checkedInAt = LocalDateTime.now();
-        
+
         // Note: Points are awarded by the service layer (LoyaltyAccount)
         // This method only handles state transition
     }
 
     /**
      * Mark attendance as NO_SHOW.
-     * <p><strong>Business Rule:</strong> Can only mark as no-show if status is RESERVED.</p>
-     * <p>Called when encounter completes and learner didn't check in.</p>
+     * <p>
+     * <strong>Business Rule:</strong> Can only mark as no-show if status is
+     * RESERVED.
+     * </p>
+     * <p>
+     * Called when encounter completes and learner didn't check in.
+     * </p>
      * 
      * @throws IllegalStateException if status is not RESERVED
      */
@@ -135,25 +151,26 @@ public class Attendance extends AuditableModel {
         if (!this.status.isReserved()) {
             // Already checked-in, cancelled, or already marked as no-show
             throw new IllegalStateException(
-                "Cannot mark as NO_SHOW. Current status is " + this.status.getStringName()
-            );
+                    "Cannot mark as NO_SHOW. Current status is " + this.status.getStringName());
         }
 
         // Transition to NO_SHOW
         transitionTo(AttendanceStatuses.NO_SHOW);
-        
+
         // Note: Penalty is applied by the service layer (LoyaltyAccount)
     }
 
     /**
      * Cancel attendance.
-     * <p><strong>Business Rules:</strong></p>
+     * <p>
+     * <strong>Business Rules:</strong>
+     * </p>
      * <ul>
-     *   <li>Cannot cancel if already CHECKED_IN, NO_SHOW, or CANCELLED</li>
-     *   <li>Late cancellation (< 24h before encounter) triggers penalty</li>
+     * <li>Cannot cancel if already CHECKED_IN, NO_SHOW, or CANCELLED</li>
+     * <li>Late cancellation (< 24h before encounter) triggers penalty</li>
      * </ul>
      * 
-     * @param cancellationTime When the cancellation occurs
+     * @param cancellationTime     When the cancellation occurs
      * @param encounterScheduledAt When the encounter is scheduled
      * @throws IllegalStateException if status doesn't allow cancellation
      */
@@ -193,9 +210,11 @@ public class Attendance extends AuditableModel {
     }
 
     /**
-     * Record points penalized (called by service layer after no-show or late cancel).
+     * Record points penalized (called by service layer after no-show or late
+     * cancel).
      * 
-     * @param points Points to penalize (must be positive, will be stored as positive value)
+     * @param points Points to penalize (must be positive, will be stored as
+     *               positive value)
      */
     public void recordPointsPenalized(Integer points) {
         if (points == null || points < 0) {
@@ -208,9 +227,12 @@ public class Attendance extends AuditableModel {
 
     /**
      * Check if this attendance requires late cancellation penalty.
-     * <p><strong>Business Rule:</strong> Penalty if cancelled < 24 hours before encounter.</p>
+     * <p>
+     * <strong>Business Rule:</strong> Penalty if cancelled < 24 hours before
+     * encounter.
+     * </p>
      * 
-     * @param cancellationTime When the cancellation occurred
+     * @param cancellationTime     When the cancellation occurred
      * @param encounterScheduledAt When the encounter is scheduled
      * @return true if penalty should be applied
      */
@@ -267,9 +289,8 @@ public class Attendance extends AuditableModel {
     private void transitionTo(AttendanceStatuses newStatus) {
         if (!this.status.canTransitionTo(newStatus)) {
             throw new IllegalStateException(
-                String.format("Invalid status transition from %s to %s",
-                    this.status.getStringName(), newStatus.name())
-            );
+                    String.format("Invalid status transition from %s to %s",
+                            this.status.getStringName(), newStatus.name()));
         }
 
         // Create new status instance (immutability principle)
