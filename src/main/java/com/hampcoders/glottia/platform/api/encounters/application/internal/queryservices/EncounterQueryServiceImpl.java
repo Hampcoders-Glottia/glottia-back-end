@@ -6,6 +6,7 @@ import com.hampcoders.glottia.platform.api.encounters.domain.model.queries.*;
 import com.hampcoders.glottia.platform.api.encounters.domain.services.EncounterQueryService;
 import com.hampcoders.glottia.platform.api.encounters.infrastructure.persistence.jpa.repository.AttendanceRepository;
 import com.hampcoders.glottia.platform.api.encounters.infrastructure.persistence.jpa.repository.EncounterRepository;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -35,13 +36,25 @@ public class EncounterQueryServiceImpl implements EncounterQueryService {
 
     @Override
     public List<Encounter> handle(SearchEncountersQuery query) {
-        // Esta es una implementación simplificada. Idealmente, usarías Specifications o Criteria API
-        // para manejar los filtros opcionales (location, etc.)
-        return encounterRepository.findByFilters(
-                query.languageId(),
-                query.cefrlevelId(),
-                query.date().atStartOfDay() // Asumiendo que se busca por día
+        // CORRECCIÓN: Convertir LocalDate a Rango de LocalDateTime
+        LocalDateTime startOfDay = null;
+        LocalDateTime endOfDay = null;
+
+        if (query.date() != null) {
+            startOfDay = query.date().atStartOfDay(); // 00:00:00
+            endOfDay = query.date().atTime(java.time.LocalTime.MAX); // 23:59:59.999
+        }
+
+        // Llamamos al repositorio con los parámetros corregidos
+        var encounterPage = encounterRepository.findByFilters(
+            startOfDay,
+            endOfDay,
+            query.languageId().intValue(),
+            query.cefrlevelId().intValue(),
+            PageRequest.of(query.page(), query.size())
         );
+
+        return encounterPage.getContent();
     }
 
     /* @Override

@@ -9,6 +9,8 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -36,12 +38,15 @@ public interface EncounterRepository extends JpaRepository<Encounter, Long> {
     List<Encounter> findByStatus(EncounterStatus status);
 
     // Query compleja para SearchEncountersQuery (simplificada, puede requerir Criteria API o Specification)
-    @Query("SELECT e FROM Encounter e WHERE e.status.name IN ('PUBLISHED', 'READY') " +
-       "AND (e.language.id = :languageId) " +
-       "AND (e.level.id = :cefrLevelId) " +
-       "AND (cast(e.scheduledAt as date) = :date)")
-    List<Encounter> findByFilters(
-            @Param("languageId") Long languageId,
-            @Param("cefrLevelId") Long cefrLevelId,
-            @Param("date") LocalDateTime date);
+    @Query("SELECT e FROM Encounter e WHERE " +
+        "(cast(:startOfDay as timestamp) IS NULL OR e.scheduledAt >= :startOfDay) AND " +
+        "(cast(:endOfDay as timestamp) IS NULL OR e.scheduledAt <= :endOfDay) AND " +
+        "(:languageId IS NULL OR e.language.id = :languageId) AND " +
+        "(:cefrLevelId IS NULL OR e.level.id = :cefrLevelId)")
+    Page<Encounter> findByFilters(
+        @Param("startOfDay") LocalDateTime startOfDay,
+        @Param("endOfDay") LocalDateTime endOfDay,
+        @Param("languageId") Integer languageId,
+        @Param("cefrLevelId") Integer cefrLevelId,
+        Pageable pageable);
 }
