@@ -17,4 +17,5 @@ public interface EncounterQueryService {
     List<Attendance> handle(GetEncountersByCreatorIdAndEncounterStatusIdQuery query);
     boolean handle(HasConflictingEncounterQuery query); // Devuelve boolean
     Optional<Object> handle(GetAttendanceStatsQuery query); // Devuelve estadísticas
+    List<Encounter> handle(GetLearnerEncounterHistoryQuery query);
 }

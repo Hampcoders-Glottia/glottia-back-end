@@ -67,10 +67,7 @@ public class EncounterQueryServiceImpl implements EncounterQueryService {
 
     @Override
     public List<Encounter> handle(GetUpcomingEncountersForLearnerQuery query) {
-        // Esta query es compleja y requiere una implementación personalizada en el repositorio
-        // (Ver `findConflictingEncounters` como ejemplo de query con JOIN)
-        // Por simplicidad, simulamos:
-        return List.of(); // Debería implementarse en EncounterRepository
+        return encounterRepository.findUpcomingByLearnerId(query.learnerId());
     }
 
     /*     @Override
@@ -109,4 +106,9 @@ public class EncounterQueryServiceImpl implements EncounterQueryService {
         // (COUNT... GROUP BY status)
         return Optional.empty(); // Implementación pendiente
     }
+
+  // Nueva implementación para historial (Asegúrate de agregar el método a la interfaz EncounterQueryService primero)
+  public List<Encounter> handle(GetLearnerEncounterHistoryQuery query) {
+    return encounterRepository.findHistoryByLearnerId(query.learnerId());
+  }
 }
