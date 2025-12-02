@@ -7,6 +7,8 @@ public record EncounterResource(
     Long id,
     Long creatorId,
     Long venueId,
+    String venueName,      // Nuevo
+    String venueAddress,   // Nuevo
     Long tableId,
     String topic,
     String language,
