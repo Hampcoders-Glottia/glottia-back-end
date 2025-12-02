@@ -120,15 +120,16 @@ public class Attendance extends AuditableModel {
      * 
      * @throws IllegalStateException if status is not RESERVED
      */
-    public void checkIn() {
+    public void checkIn(AttendanceStatus checkedInStatus) {
         if (!this.status.isReserved()) {
-            throw new IllegalStateException(
-                    "Cannot check-in. Current status is " + this.status.getStringName() +
-                            ". Check-in is only allowed for RESERVED attendances.");
+            throw new IllegalStateException("Can only check-in from RESERVED status");
+        }
+        if (this.checkedInAt != null) {
+            throw new IllegalStateException("Already checked in");
         }
 
         // Transition to CHECKED_IN
-        transitionTo(AttendanceStatuses.CHECKED_IN);
+        this.status = checkedInStatus;
         this.checkedInAt = LocalDateTime.now();
 
         // Note: Points are awarded by the service layer (LoyaltyAccount)

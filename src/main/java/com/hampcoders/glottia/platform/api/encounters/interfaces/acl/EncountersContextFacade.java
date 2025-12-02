@@ -1,6 +1,8 @@
 package com.hampcoders.glottia.platform.api.encounters.interfaces.acl;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
 
 /**
  * Context facade for Encounters Bounded Context.
@@ -45,6 +47,23 @@ public interface EncountersContextFacade {
      */
     // void publishLearnerCheckedInEvent(Long encounterId, LearnerId learnerId,
     // VenueId venueId);
+
+    /**
+     * Get encounter counts by date for a specific venue.
+     * Returns a list of arrays where each array contains:
+     * - index 0: date as String (ISO format: yyyy-MM-dd)
+     * - index 1: scheduled count as Long
+     * - index 2: completed count as Long
+     * 
+     * Used by Venues BC for statistics.
+     * 
+     * @param venueId   The venue ID
+     * @param startDate Start date (inclusive)
+     * @param endDate   End date (inclusive)
+     * @return List of Object arrays with [dateString, scheduledCount, completedCount]
+     */
+    List<Object[]> getEncounterCountsByVenueAndDateRange(Long venueId, LocalDate startDate, LocalDate endDate);
+
 
     /**
      * Publica un evento cuando un Encounter se completa.

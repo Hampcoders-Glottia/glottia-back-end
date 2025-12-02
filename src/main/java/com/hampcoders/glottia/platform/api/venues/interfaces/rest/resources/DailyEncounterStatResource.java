@@ -3,7 +3,7 @@ package com.hampcoders.glottia.platform.api.venues.interfaces.rest.resources;
 import java.time.LocalDate;
 
 /**
- * Resource representing daily encounter statistics.
+ * Resource representing daily encounter statistics for a venue.
  */
 public record DailyEncounterStatResource(
     LocalDate date,

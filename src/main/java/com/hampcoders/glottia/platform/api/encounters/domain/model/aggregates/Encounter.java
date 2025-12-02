@@ -113,7 +113,7 @@ public class Encounter extends AuditableAbstractAggregateRoot<Encounter> {
      * @throws IllegalStateException if the encounter is not PUBLISHED or READY,
      * @param learnerId
      */
-    public void join(LearnerId learnerId, AttendanceStatus status) { // <--- CHANGE SIGNATURE
+    public void join(LearnerId learnerId, AttendanceStatus status, EncounterStatus readyStatusIfNeeded) { // <--- CHANGE SIGNATURE
 
         // 1. Validate the input is technically correct
         if (status == null || !status.isReserved()) {
@@ -140,7 +140,7 @@ public class Encounter extends AuditableAbstractAggregateRoot<Encounter> {
             // instead of doing 'transitionTo(EncounterStatuses.READY)' to avoid future
             // errors.
             // But for now, let's fix the Attendance error first.
-            transitionTo(EncounterStatuses.READY);
+            transitionTo(readyStatusIfNeeded);
         }
     }
 
@@ -151,7 +151,7 @@ public class Encounter extends AuditableAbstractAggregateRoot<Encounter> {
      * @throws IllegalStateException if not in check-in window or encounter not
      *                               READY/IN
      */
-    public void checkIn(LearnerId learnerId) {
+    public void checkIn(LearnerId learnerId, AttendanceStatus checkedInStatus) {
         if (!isInCheckInWindow()) {
             throw new IllegalStateException(
                     "Check-in is only allowed 1 hour before to 15 minutes after the start time.");
@@ -162,7 +162,7 @@ public class Encounter extends AuditableAbstractAggregateRoot<Encounter> {
         }
         Attendance attendance = attendances.findByLearnerId(learnerId)
                 .orElseThrow(() -> new IllegalArgumentException("Learner not found in this encounter"));
-        attendance.checkIn(); // Valida estado interno en Attendance
+        attendance.checkIn(checkedInStatus); // Valida estado interno en Attendance
         // Podrías emitir evento LearnerCheckedInEvent aquí
     }
 
@@ -172,7 +172,7 @@ public class Encounter extends AuditableAbstractAggregateRoot<Encounter> {
      * @throws IllegalStateException if the encounter is not in READY state or if
      *                               there are not enough checked-in learners.
      */
-    public void start() {
+    public void start(EncounterStatus inProgressStatus) {
         if (!this.status.isReady()) {
             throw new IllegalStateException("Encounter must be in READY state to start.");
         }
@@ -180,7 +180,7 @@ public class Encounter extends AuditableAbstractAggregateRoot<Encounter> {
             throw new IllegalStateException(
                     "Cannot start encounter with less than " + minCapacity + " checked-in learners.");
         }
-        transitionTo(EncounterStatuses.IN_PROGRESS);
+        transitionTo(inProgressStatus);
         // TODO: Emit event EncounterStartedEvent here
     }
 
@@ -190,11 +190,11 @@ public class Encounter extends AuditableAbstractAggregateRoot<Encounter> {
      * 
      * @throws IllegalStateException if the encounter is not in IN_PROGRESS state.
      */
-    public void complete() {
+    public void complete(EncounterStatus completedStatus) {
         if (this.status.getName() != EncounterStatuses.IN_PROGRESS) {
             throw new IllegalStateException("Encounter must be IN_PROGRESS to be completed.");
         }
-        transitionTo(EncounterStatuses.COMPLETED);
+        transitionTo(completedStatus);
         attendances.markNoShows();
         // Podrías emitir evento EncounterCompletedEvent aquí
     }
@@ -206,7 +206,7 @@ public class Encounter extends AuditableAbstractAggregateRoot<Encounter> {
      * @throws IllegalStateException if there are checked-in learners while
      *                               IN_PROGRESS or if already
      */
-    public void cancel(String reason) {
+    public void cancel(EncounterStatus cancelledStatus, String reason) {
         if (attendances.getCheckedInCount() > 0 && this.status.getName() == EncounterStatuses.IN_PROGRESS) {
             throw new IllegalStateException("Cannot cancel encounter with checked-in learners while IN_PROGRESS.");
         }
@@ -214,7 +214,7 @@ public class Encounter extends AuditableAbstractAggregateRoot<Encounter> {
                 || this.status.getName() == EncounterStatuses.CANCELLED) {
             throw new IllegalStateException("Encounter is already COMPLETED or CANCELLED.");
         }
-        transitionTo(EncounterStatuses.CANCELLED);
+        transitionTo(cancelledStatus);
         attendances.cancelAllReserved(LocalDateTime.now(), this.scheduledAt);
         // Podrías emitir evento EncounterCancelledEvent aquí, incluyendo la razón
     }
@@ -225,16 +225,17 @@ public class Encounter extends AuditableAbstractAggregateRoot<Encounter> {
      * @throws IllegalStateException if the encounter is not in DRAFT state or if no
      * @return table is assigned.
      */
-    public void publish() {
+    public void publish(EncounterStatus publishedStatus) {
         if (!this.status.isDraft())
             throw new IllegalStateException("Encounter must be in DRAFT state to be published.");
 
         if (this.tableId == null)
             throw new IllegalStateException("Cannot publish encounter without a confirmed table.");
 
-        transitionTo(EncounterStatuses.PUBLISHED);
-        // TODO: Emit event EncounterPublishedEvent aquí
+        transitionTo(publishedStatus);
     }
+
+    
 
     // --- Métodos de validación ---
     public boolean isInCheckInWindow() {
@@ -260,11 +261,11 @@ public class Encounter extends AuditableAbstractAggregateRoot<Encounter> {
      * 
      * @param newStatus
      */
-    private void transitionTo(EncounterStatuses newStatus) {
-        if (!this.status.canTransitionTo(newStatus)) {
+    private void transitionTo(EncounterStatus newStatus) {
+        if (!this.status.canTransitionTo(newStatus.getName())) {
             throw new IllegalStateException(
                     "Cannot transition from " + this.status.getName() + " to " + newStatus);
         }
-        this.status = new EncounterStatus(newStatus);
+        this.status = newStatus;
     }
 }

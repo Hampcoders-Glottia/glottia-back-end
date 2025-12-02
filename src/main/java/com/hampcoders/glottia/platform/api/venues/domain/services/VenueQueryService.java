@@ -12,10 +12,12 @@ import com.hampcoders.glottia.platform.api.venues.domain.model.queries.venues.Ge
 import com.hampcoders.glottia.platform.api.venues.domain.model.queries.venues.GetTotalVenuesCountQuery;
 import com.hampcoders.glottia.platform.api.venues.domain.model.queries.venues.GetVenueByIdQuery;
 import com.hampcoders.glottia.platform.api.venues.domain.model.queries.venues.GetVenueByNameQuery;
+import com.hampcoders.glottia.platform.api.venues.domain.model.queries.venues.GetVenueEncounterStatisticsQuery;
 import com.hampcoders.glottia.platform.api.venues.domain.model.queries.venues.GetVenuesByCityQuery;
 import com.hampcoders.glottia.platform.api.venues.domain.model.queries.venues.GetVenuesByPartnerIdQuery;
 import com.hampcoders.glottia.platform.api.venues.domain.model.queries.venues.GetVenuesByVenueTypeIdQuery;
 import com.hampcoders.glottia.platform.api.venues.domain.model.queries.venues.GetVenuesWithActivePromotionsQuery;
+import com.hampcoders.glottia.platform.api.venues.interfaces.rest.resources.VenueEncounterStatisticsResource;
 
 public interface VenueQueryService {
     Optional<Venue> handle(GetVenueByIdQuery query);
@@ -29,4 +31,6 @@ public interface VenueQueryService {
     List<Venue> handle(GetVenuesWithActivePromotionsQuery query);
     int handle(GetTotalVenuesCountQuery query);
     List<AvailabilityCalendar> handle(GetAvailableSlotsForVenueQuery query);
+    VenueEncounterStatisticsResource handle(GetVenueEncounterStatisticsQuery query);
+    
 }

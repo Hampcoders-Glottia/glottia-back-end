@@ -24,12 +24,14 @@ import com.hampcoders.glottia.platform.api.venues.domain.model.queries.venues.Ge
 import com.hampcoders.glottia.platform.api.venues.domain.model.queries.venues.GetAvailableSlotsForVenueQuery;
 import com.hampcoders.glottia.platform.api.venues.domain.model.queries.venues.GetTotalVenuesCountQuery;
 import com.hampcoders.glottia.platform.api.venues.domain.model.queries.venues.GetVenueByIdQuery;
+import com.hampcoders.glottia.platform.api.venues.domain.model.queries.venues.GetVenueEncounterStatisticsQuery;
 import com.hampcoders.glottia.platform.api.venues.domain.model.queries.venues.GetVenuesByCityQuery;
 import com.hampcoders.glottia.platform.api.venues.domain.model.queries.venues.GetVenuesByVenueTypeIdQuery;
 import com.hampcoders.glottia.platform.api.venues.domain.model.queries.venues.GetVenuesWithActivePromotionsQuery;
 import com.hampcoders.glottia.platform.api.venues.domain.services.VenueCommandService;
 import com.hampcoders.glottia.platform.api.venues.domain.services.VenueQueryService;
 import com.hampcoders.glottia.platform.api.venues.interfaces.rest.resources.CountResource;
+import com.hampcoders.glottia.platform.api.venues.interfaces.rest.resources.VenueEncounterStatisticsResource;
 import com.hampcoders.glottia.platform.api.venues.interfaces.rest.resources.tables.AvailableSlotResource;
 import com.hampcoders.glottia.platform.api.venues.interfaces.rest.resources.venues.CreateVenueResource;
 import com.hampcoders.glottia.platform.api.venues.interfaces.rest.resources.venues.UpdateVenueDetailsResource;
@@ -316,5 +318,33 @@ public class VenuesController {
                 .toList();
         
         return ResponseEntity.ok(resources);
+    }
+
+    /**
+     * Get encounter statistics for a venue.
+     * 
+     * @param venueId  The venue ID
+     * @param month    Month number (1-12) - used with year
+     * @param year     Year - used with month
+     * @param lastDays Number of last days to fetch (alternative to month/year)
+     * @return Venue encounter statistics grouped by week
+     */
+    @GetMapping("/{venueId}/encounter-statistics")
+    public ResponseEntity<VenueEncounterStatisticsResource> getEncounterStatistics(
+            @PathVariable Long venueId,
+            @RequestParam(required = false) Integer month,
+            @RequestParam(required = false) Integer year,
+            @RequestParam(required = false, defaultValue = "30") Integer lastDays
+    ) {
+        GetVenueEncounterStatisticsQuery query;
+        
+        if (month != null && year != null) {
+            query = GetVenueEncounterStatisticsQuery.forMonth(venueId, month, year);
+        } else {
+            query = GetVenueEncounterStatisticsQuery.forLastDays(venueId, lastDays);
+        }
+        
+        var statistics = venueQueryService.handle(query);
+        return ResponseEntity.ok(statistics);
     }
 }

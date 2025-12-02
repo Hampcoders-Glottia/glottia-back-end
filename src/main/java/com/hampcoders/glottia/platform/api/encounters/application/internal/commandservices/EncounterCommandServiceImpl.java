@@ -113,7 +113,13 @@ public class EncounterCommandServiceImpl implements EncounterCommandService {
     public Optional<Encounter> handle(PublishEncounterCommand command) {
         var encounter = encounterRepository.findById(command.encounterId())
                 .orElseThrow(() -> new IllegalArgumentException("Encounter not found"));
-        encounter.publish();
+
+        // Fetch published status entity from DB and pass the managed instance
+        EncounterStatus publishedStatus = encounterStatusRepository.findByName(EncounterStatuses.PUBLISHED)
+                .orElseThrow(() -> new IllegalStateException("Status PUBLISHED not found in DB"));
+
+        // pass managed entity
+        encounter.publish(publishedStatus);
         encounterRepository.save(encounter);
         return Optional.of(encounter);
     }
@@ -129,8 +135,10 @@ public class EncounterCommandServiceImpl implements EncounterCommandService {
         var reservedStatus = attendanceStatusRepository.findByName(AttendanceStatuses.RESERVED)
                 .orElseThrow(() -> new IllegalStateException("Status RESERVED not found in DB"));
 
+        EncounterStatus readyStatus = encounterStatusRepository.findByName(EncounterStatuses.READY)
+                .orElseThrow(() -> new IllegalStateException("Status READY not found in DB"));
         // 3. Pass the Entity to the Aggregate
-        encounter.join(command.learnerId(), reservedStatus);
+        encounter.join(command.learnerId(), reservedStatus, readyStatus);
 
         // 4. Save
         encounterRepository.save(encounter);
@@ -142,8 +150,10 @@ public class EncounterCommandServiceImpl implements EncounterCommandService {
         var encounter = encounterRepository.findById(command.encounterId())
                 .orElseThrow(() -> new IllegalArgumentException("Encounter not found"));
 
+        AttendanceStatus checkedInStatus = attendanceStatusRepository.findByName(AttendanceStatuses.CHECKED_IN)
+                .orElseThrow(() -> new IllegalStateException("Status CHECKED_IN not found in DB"));
         // Modificamos el .checkIn para que acepte el status gestionado
-        encounter.checkIn(command.learnerId());
+        encounter.checkIn(command.learnerId(), checkedInStatus);
 
         encounterRepository.save(encounter);
         // TODO: Publicar evento LearnerCheckedInEvent para que Loyalty BC otorgue
@@ -156,7 +166,10 @@ public class EncounterCommandServiceImpl implements EncounterCommandService {
         var encounter = encounterRepository.findById(command.encounterId())
                 .orElseThrow(() -> new IllegalArgumentException("Encounter not found"));
 
-        encounter.start();
+        EncounterStatus inProgressStatus = encounterStatusRepository.findByName(EncounterStatuses.IN_PROGRESS)
+                .orElseThrow(() -> new IllegalStateException("Status IN_PROGRESS not found in DB"));
+
+        encounter.start(inProgressStatus);
         encounterRepository.save(encounter);
         return Optional.of(encounter);
     }
@@ -166,7 +179,10 @@ public class EncounterCommandServiceImpl implements EncounterCommandService {
         var encounter = encounterRepository.findById(command.encounterId())
                 .orElseThrow(() -> new IllegalArgumentException("Encounter not found"));
 
-        encounter.complete();
+        EncounterStatus completedStatus = encounterStatusRepository.findByName(EncounterStatuses.COMPLETED)
+                .orElseThrow(() -> new IllegalStateException("Status COMPLETED not found in DB"));
+
+        encounter.complete(completedStatus);
         encounterRepository.save(encounter);
         // TODO: Publicar evento EncounterCompletedEvent para que Loyalty BC penalice
         // NO_SHOWS
@@ -178,25 +194,30 @@ public class EncounterCommandServiceImpl implements EncounterCommandService {
         var encounter = encounterRepository.findById(command.encounterId())
                 .orElseThrow(() -> new IllegalArgumentException("Encounter not found"));
 
-        encounter.cancel(command.reason());
+        EncounterStatus cancelledStatus = encounterStatusRepository.findByName(EncounterStatuses.CANCELLED)
+                .orElseThrow(() -> new IllegalStateException("Status CANCELLED not found in DB"));
+
+        encounter.cancel(cancelledStatus, command.reason());
         encounterRepository.save(encounter);
         // TODO: Publicar evento EncounterCancelledEvent para Venues BC (liberar mesa) y
         // Loyalty BC (penalizar)
         return Optional.of(encounter);
     }
 
-    @Override
+     @Override
     public Optional<Encounter> handle(CancelAttendanceCommand command) {
         var encounter = encounterRepository.findById(command.encounterId())
                 .orElseThrow(() -> new IllegalArgumentException("Encounter not found"));
 
-        AttendanceStatus cancelledStatus = attendanceStatusRepository.findByName(AttendanceStatuses.CANCELLED)
-                .orElseThrow(() -> new IllegalStateException("CANCELLED status not found"));
+        // Find the specific attendance to cancel
+        var attendance = encounter.getAttendances().findByLearnerId(command.learnerId())
+                .orElseThrow(() -> new IllegalArgumentException("Attendance not found for this learner"));
 
-        encounter.cancel(cancelledStatus.toString());
+        // Cancel the attendance (not the encounter)
+        attendance.cancel(LocalDateTime.now(), encounter.getScheduledAt());
+
         encounterRepository.save(encounter);
-        // TODO: Publicar evento AttendanceCancelledEvent para Loyalty BC (penalizar si
-        // es tardía)
+        // TODO: Publicar evento AttendanceCancelledEvent para Loyalty BC (penalizar si es tardía)
         return Optional.of(encounter);
     }
 
@@ -205,19 +226,22 @@ public class EncounterCommandServiceImpl implements EncounterCommandService {
         EncounterStatus readyStatus = encounterStatusRepository.findByName(EncounterStatuses.READY).orElse(null);
         EncounterStatus publishedStatus = encounterStatusRepository.findByName(EncounterStatuses.PUBLISHED)
                 .orElse(null);
+        
+        // Fetch CANCELLED status - this was missing!
+        EncounterStatus cancelledStatus = encounterStatusRepository.findByName(EncounterStatuses.CANCELLED)
+                .orElse(null);
 
-        if (readyStatus == null || publishedStatus == null)
-            return; // No se pueden buscar
+        if (readyStatus == null || publishedStatus == null || cancelledStatus == null)
+            return; // Cannot proceed without statuses
 
         List<Encounter> encountersToAutoCancel = encounterRepository.findAllByStatusInAndScheduledAtBefore(
-                publishedStatus != null && readyStatus != null
-                        ? List.of(AttendanceStatuses.CHECKED_IN, AttendanceStatuses.RESERVED)
-                        : List.of(),
+                List.of(readyStatus, publishedStatus),
                 command.thresholdTime());
 
         for (Encounter encounter : encountersToAutoCancel) {
             if (encounter.needsAutoCancellation()) {
-                encounter.cancel("Auto-cancelled: insufficient attendees 30 mins prior.");
+                // Pass the managed EncounterStatus entity
+                encounter.cancel(cancelledStatus, "Auto-cancelled: insufficient attendees 30 mins prior.");
                 encounterRepository.save(encounter);
                 // TODO: Publicar evento EncounterCancelledEvent
             }
