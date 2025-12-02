@@ -1,7 +1,9 @@
 package com.hampcoders.glottia.platform.api.venues.interfaces.rest;
 
+import java.time.LocalDate;
 import java.util.List;
 
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -19,6 +21,7 @@ import com.hampcoders.glottia.platform.api.venues.domain.model.commands.venues.A
 import com.hampcoders.glottia.platform.api.venues.domain.model.commands.venues.DeactivateVenueCommand;
 import com.hampcoders.glottia.platform.api.venues.domain.model.queries.venues.GetActiveVenuesQuery;
 import com.hampcoders.glottia.platform.api.venues.domain.model.queries.venues.GetAllVenuesQuery;
+import com.hampcoders.glottia.platform.api.venues.domain.model.queries.venues.GetAvailableSlotsForVenueQuery;
 import com.hampcoders.glottia.platform.api.venues.domain.model.queries.venues.GetTotalVenuesCountQuery;
 import com.hampcoders.glottia.platform.api.venues.domain.model.queries.venues.GetVenueByIdQuery;
 import com.hampcoders.glottia.platform.api.venues.domain.model.queries.venues.GetVenuesByCityQuery;
@@ -27,9 +30,11 @@ import com.hampcoders.glottia.platform.api.venues.domain.model.queries.venues.Ge
 import com.hampcoders.glottia.platform.api.venues.domain.services.VenueCommandService;
 import com.hampcoders.glottia.platform.api.venues.domain.services.VenueQueryService;
 import com.hampcoders.glottia.platform.api.venues.interfaces.rest.resources.CountResource;
+import com.hampcoders.glottia.platform.api.venues.interfaces.rest.resources.tables.AvailableSlotResource;
 import com.hampcoders.glottia.platform.api.venues.interfaces.rest.resources.venues.CreateVenueResource;
 import com.hampcoders.glottia.platform.api.venues.interfaces.rest.resources.venues.UpdateVenueDetailsResource;
 import com.hampcoders.glottia.platform.api.venues.interfaces.rest.resources.venues.VenueResource;
+import com.hampcoders.glottia.platform.api.venues.interfaces.rest.transform.fromentity.AvailableSlotResourceFromEntityAssembler;
 import com.hampcoders.glottia.platform.api.venues.interfaces.rest.transform.fromentity.VenueResourceFromEntityAssembler;
 import com.hampcoders.glottia.platform.api.venues.interfaces.rest.transform.fromresource.CreateVenueCommandFromResourceAssembler;
 import com.hampcoders.glottia.platform.api.venues.interfaces.rest.transform.fromresource.UpdateVenueDetailsCommandFromResourceAssembler;
@@ -286,6 +291,30 @@ public class VenuesController {
         var resources = venues.stream()
                 .map(VenueResourceFromEntityAssembler::toResourceFromEntity)
                 .toList();
+        return ResponseEntity.ok(resources);
+    }
+
+    /**
+     * Get available slots for a venue.
+     * 
+     * @param venueId   The venue ID
+     * @param startDate Start date filter (optional, defaults to today)
+     * @param endDate   End date filter (optional, null = all future slots)
+     * @return List of available slots
+     */
+    @GetMapping("/{venueId}/available-slots")
+    public ResponseEntity<List<AvailableSlotResource>> getAvailableSlots(
+            @PathVariable Long venueId,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate
+    ) {
+        var query = new GetAvailableSlotsForVenueQuery(venueId, startDate, endDate);
+        var slots = venueQueryService.handle(query);
+        
+        var resources = slots.stream()
+                .map(AvailableSlotResourceFromEntityAssembler::toResourceFromEntity)
+                .toList();
+        
         return ResponseEntity.ok(resources);
     }
 }
