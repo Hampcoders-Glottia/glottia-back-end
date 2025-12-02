@@ -87,4 +87,52 @@ public interface AvailabilityCalendarRepository extends JpaRepository<Availabili
     @Query("SELECT ac FROM AvailabilityCalendar ac WHERE ac.table = :table " +
             "AND ac.dayOfWeek IS NOT NULL")
     List<AvailabilityCalendar> findRecurringPatternSlots(@Param("table") Table table);
+
+    /**
+     * Find all available slots for a venue within a date range.
+     * Both startDate and endDate are required.
+     * 
+     * @param venueId   The venue ID
+     * @param startDate Start date (inclusive)
+     * @param endDate   End date (inclusive)
+     * @return List of available slots
+     */
+    @Query("""
+        SELECT ac FROM AvailabilityCalendar ac
+        JOIN ac.table t
+        JOIN t.tableRegistry tr
+        WHERE tr.venue.id = :venueId
+          AND ac.isAvailable = true
+          AND ac.isReserved = false
+          AND ac.availabilityDate >= :startDate
+          AND ac.availabilityDate <= :endDate
+        ORDER BY ac.availabilityDate ASC, ac.startHour ASC
+        """)
+    List<AvailabilityCalendar> findAvailableSlotsByVenueAndDateRange(
+        @Param("venueId") Long venueId,
+        @Param("startDate") LocalDate startDate,
+        @Param("endDate") LocalDate endDate
+    );
+
+    /**
+     * Find all future available slots for a venue (no end date limit).
+     * 
+     * @param venueId   The venue ID
+     * @param startDate Start date (inclusive)
+     * @return List of available slots from startDate onwards
+     */
+    @Query("""
+        SELECT ac FROM AvailabilityCalendar ac
+        JOIN ac.table t
+        JOIN t.tableRegistry tr
+        WHERE tr.venue.id = :venueId
+          AND ac.isAvailable = true
+          AND ac.isReserved = false
+          AND ac.availabilityDate >= :startDate
+        ORDER BY ac.availabilityDate ASC, ac.startHour ASC
+        """)
+    List<AvailabilityCalendar> findAllFutureAvailableSlotsByVenue(
+        @Param("venueId") Long venueId,
+        @Param("startDate") LocalDate startDate
+    );
 }
