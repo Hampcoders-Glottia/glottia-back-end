@@ -1,6 +1,8 @@
 package com.hampcoders.glottia.platform.api.venues.domain.model.aggregates;
 
+import java.time.DayOfWeek;
 import java.time.LocalDate;
+import java.time.LocalTime;
 
 import com.hampcoders.glottia.platform.api.shared.domain.model.aggregates.AuditableAbstractAggregateRoot;
 import com.hampcoders.glottia.platform.api.venues.domain.model.entities.TableStatus;
@@ -43,6 +45,7 @@ public class TableRegistry extends AuditableAbstractAggregateRoot<TableRegistry>
 
     /**
      * Constructor that establishes 1:1 relationship with Venue
+     * 
      * @param venue The venue that owns this registry
      */
     public TableRegistry(Venue venue) {
@@ -57,9 +60,10 @@ public class TableRegistry extends AuditableAbstractAggregateRoot<TableRegistry>
     /**
      * Adds a new table to the registry
      * Validates unique table number within the venue
+     * 
      * @param tableNumber Unique identifier for the table
-     * @param capacity Number of people the table can accommodate
-     * @param tableType Type entity from catalog
+     * @param capacity    Number of people the table can accommodate
+     * @param tableType   Type entity from catalog
      * @param tableStatus Status entity from catalog
      * @return The created Table entity
      */
@@ -67,41 +71,49 @@ public class TableRegistry extends AuditableAbstractAggregateRoot<TableRegistry>
         if (tableList.hasTableNumber(tableNumber)) {
             throw new IllegalStateException("Table number already exists: " + tableNumber);
         }
-        
+
         tableList.addTable(this, tableNumber, capacity, tableType, tableStatus);
     }
 
     /**
-     * Reserve a table for a specific date
-     * @param tableId The ID of the table to reserve
-     * @param date The date for the reservation
+     * Reserve a table for a specific date and time slot
+     * 
+     * @param tableId   The ID of the table to reserve
+     * @param date      The date for the reservation
+     * @param startHour Start time of the 2-hour slot
+     * @param endHour   End time of the 2-hour slot
      */
-    public void reserveTable(Long tableId, LocalDate date) {
+    public void reserveTable(Long tableId, LocalDate date, LocalTime startHour, LocalTime endHour) {
         Table table = findTableById(tableId);
         if (table == null) {
             throw new IllegalArgumentException("Table not found in this registry");
         }
-        
-        table.reserve(date);
+
+        table.reserve(date, startHour, endHour);
     }
 
     /**
-     * Release a table for a specific date
-     * @param tableId The ID of the table to release
-     * @param date The date to release
+     * Release a table reservation for a specific time slot
+     * 
+     * @param tableId   The ID of the table to release
+     * @param date      The date to release
+     * @param startHour Start time of the slot
+     * @param endHour   End time of the slot
      */
-    public void releaseTable(Long tableId, LocalDate date, TableStatus availableStatus) {
+    public void releaseTable(Long tableId, LocalDate date, LocalTime startHour, LocalTime endHour,
+            TableStatus availableStatus) {
         Table table = findTableById(tableId);
         if (table == null) {
             throw new IllegalArgumentException("Table not found in this registry");
         }
 
-        table.release(date, availableStatus);
+        table.release(date, startHour, endHour, availableStatus);
     }
 
     /**
      * Remove a table from the registry
      * Only allowed if table has no active reservations
+     * 
      * @param tableId The ID of the table to remove
      */
     public void removeTable(Long tableId) {
@@ -109,29 +121,57 @@ public class TableRegistry extends AuditableAbstractAggregateRoot<TableRegistry>
         if (table == null) {
             throw new IllegalArgumentException("Table not found in this registry");
         }
-        
+
         if (!table.canBeDeleted()) {
             throw new IllegalStateException("Cannot delete table with active reservations");
         }
-        
+
         tableList.removeTable(table);
     }
 
     /**
      * Get available tables for a specific date and minimum capacity
-     * @param date The date to check availability
+     * 
+     * @param date        The date to check availability
      * @param minCapacity Minimum capacity required
      * @return List of available tables matching criteria
      */
     public List<Table> getAvailableTables(LocalDate date, Integer minCapacity) {
         return tableList.getTables().stream()
-            .filter(Table::isAvailable)
-            .filter(table -> table.getCapacity() >= minCapacity)
-            .toList();
+                .filter(Table::isAvailable)
+                .filter(table -> table.getCapacity() >= minCapacity)
+                .toList();
+    }
+
+    /**
+     * Create an availability slot for a table
+     * Partners use this to pre-create available time slots for learners to book
+     * 
+     * @param tableId          Table identifier
+     * @param availabilityDate Specific date (null for recurring pattern)
+     * @param dayOfWeek        Day of week for recurring pattern (null for specific
+     *                         date)
+     * @param startHour        Start time of slot
+     * @param endHour          End time of slot (must be 2 hours after start)
+     */
+    public void createAvailabilitySlot(
+            Long tableId,
+            LocalDate availabilityDate,
+            DayOfWeek dayOfWeek,
+            LocalTime startHour,
+            LocalTime endHour) {
+
+        Table table = findTableById(tableId);
+        if (table == null) {
+            throw new IllegalArgumentException("Table not found in this registry");
+        }
+
+        table.createAvailabilitySlot(availabilityDate, dayOfWeek, startHour, endHour);
     }
 
     /**
      * Get total count of tables in this venue
+     * 
      * @return Total number of tables
      */
     public int getTotalTableCount() {
@@ -140,19 +180,20 @@ public class TableRegistry extends AuditableAbstractAggregateRoot<TableRegistry>
 
     /**
      * Get count of available tables
+     * 
      * @return Number of available tables
      */
     public int getAvailableTableCount() {
         return (int) tableList.getTables().stream()
-            .filter(Table::isAvailable)
-            .count();
+                .filter(Table::isAvailable)
+                .count();
     }
 
     // Private helpers
     private Table findTableById(Long tableId) {
         return tableList.getTables().stream()
-            .filter(table -> table.getId().equals(tableId))
-            .findFirst()
-            .orElse(null);
+                .filter(table -> table.getId().equals(tableId))
+                .findFirst()
+                .orElse(null);
     }
 }

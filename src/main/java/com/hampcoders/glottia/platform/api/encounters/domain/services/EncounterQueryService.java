@@ -3,6 +3,7 @@ package com.hampcoders.glottia.platform.api.encounters.domain.services;
 import com.hampcoders.glottia.platform.api.encounters.domain.model.aggregates.Encounter;
 import com.hampcoders.glottia.platform.api.encounters.domain.model.entities.Attendance;
 import com.hampcoders.glottia.platform.api.encounters.domain.model.queries.*;
+import com.hampcoders.glottia.platform.api.encounters.domain.model.valueobjects.DailyEncounterStat;
 
 import java.util.List;
 import java.util.Optional;
@@ -17,4 +18,5 @@ public interface EncounterQueryService {
     List<Attendance> handle(GetEncountersByCreatorIdAndEncounterStatusIdQuery query);
     boolean handle(HasConflictingEncounterQuery query); // Devuelve boolean
     Optional<Object> handle(GetAttendanceStatsQuery query); // Devuelve estadísticas
+    List<DailyEncounterStat> handle(GetEncounterStatsByVenueQuery query);
 }

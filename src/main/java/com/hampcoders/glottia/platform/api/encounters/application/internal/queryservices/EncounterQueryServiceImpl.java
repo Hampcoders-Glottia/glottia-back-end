@@ -3,13 +3,19 @@ package com.hampcoders.glottia.platform.api.encounters.application.internal.quer
 import com.hampcoders.glottia.platform.api.encounters.domain.model.aggregates.Encounter;
 import com.hampcoders.glottia.platform.api.encounters.domain.model.entities.Attendance;
 import com.hampcoders.glottia.platform.api.encounters.domain.model.queries.*;
+import com.hampcoders.glottia.platform.api.encounters.domain.model.valueobjects.DailyEncounterStat;
 import com.hampcoders.glottia.platform.api.encounters.domain.services.EncounterQueryService;
 import com.hampcoders.glottia.platform.api.encounters.infrastructure.persistence.jpa.repository.AttendanceRepository;
 import com.hampcoders.glottia.platform.api.encounters.infrastructure.persistence.jpa.repository.EncounterRepository;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 /** 
@@ -35,13 +41,25 @@ public class EncounterQueryServiceImpl implements EncounterQueryService {
 
     @Override
     public List<Encounter> handle(SearchEncountersQuery query) {
-        // Esta es una implementación simplificada. Idealmente, usarías Specifications o Criteria API
-        // para manejar los filtros opcionales (location, etc.)
-        return encounterRepository.findByFilters(
-                query.languageId(),
-                query.cefrlevelId(),
-                query.date().atStartOfDay() // Asumiendo que se busca por día
+        // CORRECCIÓN: Convertir LocalDate a Rango de LocalDateTime
+        LocalDateTime startOfDay = null;
+        LocalDateTime endOfDay = null;
+
+        if (query.date() != null) {
+            startOfDay = query.date().atStartOfDay(); // 00:00:00
+            endOfDay = query.date().atTime(java.time.LocalTime.MAX); // 23:59:59.999
+        }
+
+        // Llamamos al repositorio con los parámetros corregidos
+        var encounterPage = encounterRepository.findByFilters(
+            startOfDay,
+            endOfDay,
+            query.languageId().intValue(),
+            query.cefrlevelId().intValue(),
+            PageRequest.of(query.page(), query.size())
         );
+
+        return encounterPage.getContent();
     }
 
     /* @Override
@@ -95,5 +113,78 @@ public class EncounterQueryServiceImpl implements EncounterQueryService {
         // Esto normalmente devolvería un DTO/Projection con conteos
         // (COUNT... GROUP BY status)
         return Optional.empty(); // Implementación pendiente
+    }
+
+    @Override
+    public List<DailyEncounterStat> handle(GetEncounterStatsByVenueQuery query) {
+        // Get scheduled counts from repository
+        List<Object[]> scheduledResults = encounterRepository.countScheduledByVenueAndDateRange(
+            query.venueId(), query.startDate(), query.endDate()
+        );
+        
+        // Get completed counts from repository
+        List<Object[]> completedResults = encounterRepository.countCompletedByVenueAndDateRange(
+            query.venueId(), query.startDate(), query.endDate()
+        );
+        
+        // Merge results into a map: date -> [scheduled, completed]
+        Map<LocalDate, long[]> statsMap = new HashMap<>();
+        
+        // Initialize all dates in range with zeros
+        LocalDate current = query.startDate();
+        while (!current.isAfter(query.endDate())) {
+            statsMap.put(current, new long[]{0L, 0L});
+            current = current.plusDays(1);
+        }
+        
+        // Populate scheduled counts - FIX: Convert java.sql.Date to LocalDate
+        for (Object[] row : scheduledResults) {
+            LocalDate date = convertToLocalDate(row[0]); // <--- FIX HERE
+            long count = ((Number) row[1]).longValue();
+            if (statsMap.containsKey(date)) {
+                statsMap.get(date)[0] = count;
+            }
+        }
+        
+        // Populate completed counts - FIX: Convert java.sql.Date to LocalDate
+        for (Object[] row : completedResults) {
+            LocalDate date = convertToLocalDate(row[0]); // <--- FIX HERE
+            long count = ((Number) row[1]).longValue();
+            if (statsMap.containsKey(date)) {
+                statsMap.get(date)[1] = count;
+            }
+        }
+        
+        // Convert to List<DailyEncounterStat> (domain value objects)
+        List<DailyEncounterStat> result = new ArrayList<>();
+        
+        statsMap.entrySet().stream()
+            .sorted(Map.Entry.comparingByKey())
+            .forEach(entry -> result.add(new DailyEncounterStat(
+                entry.getKey(),
+                entry.getValue()[0],
+                entry.getValue()[1]
+            )));
+        
+        return result;
+    }
+
+
+    private LocalDate convertToLocalDate(Object dateObject) {
+        if (dateObject == null) {
+            throw new IllegalArgumentException("Date cannot be null");
+        }
+        
+        if (dateObject instanceof LocalDate) {
+            return (LocalDate) dateObject;
+        }
+        
+        if (dateObject instanceof java.sql.Date) {
+            return ((java.sql.Date) dateObject).toLocalDate();
+        }
+        
+        throw new IllegalArgumentException(
+            "Unsupported date type: " + dateObject.getClass().getName()
+        );
     }
 }

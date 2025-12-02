@@ -6,8 +6,9 @@ import com.hampcoders.glottia.platform.api.venues.interfaces.rest.resources.tabl
 public class ReleaseTableCommandFromResourceAssembler {
     public static ReleaseTableCommand toCommandFromResource(Long tableId, ReleaseTableResource resource) {
         return new ReleaseTableCommand(
-            tableId,
-            resource.releaseDate()
-        );
+                tableId,
+                resource.releaseDate(),
+                resource.startHour(),
+                resource.endHour());
     }
 }

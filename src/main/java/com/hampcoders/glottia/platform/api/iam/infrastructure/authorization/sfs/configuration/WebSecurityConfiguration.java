@@ -6,6 +6,7 @@ import com.hampcoders.glottia.platform.api.iam.infrastructure.tokens.jwt.BearerT
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
@@ -78,24 +79,36 @@ public class WebSecurityConfiguration {
      */
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-        http.cors(corsConfigurer -> corsConfigurer.configurationSource( request -> {
+        http.cors(corsConfigurer -> corsConfigurer.configurationSource(request -> {
             var cors = new CorsConfiguration();
             cors.setAllowedOrigins(List.of("*"));
             cors.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE"));
             cors.setAllowedHeaders(List.of("*"));
             return cors;
-        } ));
+        }));
+
         http.csrf(csrfConfigurer -> csrfConfigurer.disable())
-                .exceptionHandling(exceptionHandling -> exceptionHandling.authenticationEntryPoint(unauthorizedRequestHandler))
-                .sessionManagement(customizer -> customizer.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .authorizeHttpRequests(
-                        authorizeRequests -> authorizeRequests.requestMatchers(
-                                        "/api/v1/authentication/**", "/v3/api-docs/**", "/swagger-ui.html",
-                                        "/swagger-ui/**", "/swagger-resources/**", "/webjars/**","/api/v1/registrations","/api/v1/profiles")
-                                .permitAll()
-                                .anyRequest()
-                                .authenticated())
-                .userDetailsService(userDetailsService);
+            .exceptionHandling(exceptionHandling -> exceptionHandling.authenticationEntryPoint(unauthorizedRequestHandler))
+            .sessionManagement(customizer -> customizer.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+            .authorizeHttpRequests(authorizeRequests -> authorizeRequests
+                .requestMatchers(
+                    "/api/v1/authentication/**",
+                    "/v3/api-docs/**",
+                    "/swagger-ui.html",
+                    "/swagger-ui/**",
+                    "/swagger-resources/**",
+                    "/webjars/**",
+                    "/api/v1/registrations",
+                    "/api/v1/profiles"
+                ).permitAll()
+
+                // --- AGREGAR ESTO PARA ARREGLAR EL ERROR ROJO EN EL DASHBOARD ---
+                .requestMatchers(HttpMethod.GET, "/api/v1/encounters/**").permitAll()
+                // -----------------------------------------------------------------
+
+                .anyRequest().authenticated())
+            .userDetailsService(userDetailsService);
+
         http.addFilterBefore(authorizationRequestFilter(), UsernamePasswordAuthenticationFilter.class);
         return http.build();
     }

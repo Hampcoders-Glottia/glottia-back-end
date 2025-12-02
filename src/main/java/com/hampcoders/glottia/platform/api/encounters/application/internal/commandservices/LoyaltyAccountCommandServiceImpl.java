@@ -11,8 +11,10 @@ import org.springframework.stereotype.Service;
 import java.util.Optional;
 
 /**
- * Implements the LoyaltyAccountCommandService to handle commands related to loyalty accounts.
- * This service manages the creation of loyalty accounts, awarding points, and penalizing accounts,
+ * Implements the LoyaltyAccountCommandService to handle commands related to
+ * loyalty accounts.
+ * This service manages the creation of loyalty accounts, awarding points, and
+ * penalizing accounts,
  * enforcing business rules and interacting with the necessary repository.
  */
 @Service
@@ -25,32 +27,32 @@ public class LoyaltyAccountCommandServiceImpl implements LoyaltyAccountCommandSe
     }
 
     @Override
-    public Optional<LoyaltyAccount> handle(CreateLoyaltyAccountCommand command) {
+    public Long handle(CreateLoyaltyAccountCommand command) {
         if (loyaltyAccountRepository.existsByLearnerId(command.learnerId())) {
             throw new IllegalArgumentException("Loyalty account already exists for this learner.");
         }
         var account = new LoyaltyAccount(command.learnerId());
         loyaltyAccountRepository.save(account);
-        return Optional.of(account);
+        return account.getId();
     }
 
     @Override
     public Optional<LoyaltyAccount> handle(AwardPointsCommand command) {
         var account = loyaltyAccountRepository.findByLearnerId(command.learnerId())
                 .orElseThrow(() -> new IllegalArgumentException("Loyalty account not found for this learner."));
-        
+
         // Usamos los métodos específicos del agregado
         if ("CREATION".equals(command.reason())) {
             account.awardPointsForCreation();
         } else if ("ATTENDANCE".equals(command.reason())) {
-             // Asumimos un valor estándar de 10 para asistencia
-            account.awardPointsForAttendance(10); 
+            // Asumimos un valor estándar de 10 para asistencia
+            account.awardPointsForAttendance(10);
         } else {
             // Un método genérico que deberíamos agregar al Agregado
-            // account.awardGenericPoints(command.points()); 
-            
+            // account.awardGenericPoints(command.points());
+
             // Por ahora, usamos el de asistencia como fallback
-             account.awardPointsForAttendance(command.points());
+            account.awardPointsForAttendance(command.points());
         }
 
         loyaltyAccountRepository.save(account);
@@ -67,11 +69,11 @@ public class LoyaltyAccountCommandServiceImpl implements LoyaltyAccountCommandSe
         } else if ("LATE_CANCELLATION".equals(command.reason())) {
             account.penalizeLateCancellation(5); // Penalidad estándar de 5
         } else {
-             // Método genérico
-             // account.penalizeGeneric(command.penalty());
-             
-             // Fallback
-             account.penalizeNoShow(command.penalty());
+            // Método genérico
+            // account.penalizeGeneric(command.penalty());
+
+            // Fallback
+            account.penalizeNoShow(command.penalty());
         }
 
         loyaltyAccountRepository.save(account);
