@@ -4,6 +4,8 @@ import com.hampcoders.glottia.platform.api.encounters.domain.model.aggregates.En
 import com.hampcoders.glottia.platform.api.encounters.domain.model.commands.*;
 import com.hampcoders.glottia.platform.api.encounters.domain.model.entities.AttendanceStatus;
 import com.hampcoders.glottia.platform.api.encounters.domain.model.entities.EncounterStatus;
+import com.hampcoders.glottia.platform.api.encounters.domain.model.events.EncounterCreatedEvent;
+import com.hampcoders.glottia.platform.api.encounters.domain.model.events.LearnerCheckedInEvent;
 import com.hampcoders.glottia.platform.api.encounters.domain.model.valueobjects.AttendanceStatuses;
 import com.hampcoders.glottia.platform.api.encounters.domain.model.valueobjects.EncounterStatuses;
 import com.hampcoders.glottia.platform.api.encounters.domain.model.valueobjects.TableId;
@@ -19,6 +21,8 @@ import com.hampcoders.glottia.platform.api.shared.infrastructure.persistence.jpa
 import com.hampcoders.glottia.platform.api.venues.interfaces.acl.VenuesContextFacade;
 
 import jakarta.transaction.Transactional;
+
+import org.springframework.context.ApplicationEventPublisher;
 
 // import com.hampcoders.glottia.platform.api.venues.interfaces.acl.VenuesContextFacade; // ACL
 // import com.hampcoders.glottia.platform.api.profiles.interfaces.acl.ProfilesContextFacade; // ACL
@@ -47,12 +51,13 @@ public class EncounterCommandServiceImpl implements EncounterCommandService {
     private final CEFRLevelRepository cefrLevelRepository;
     private final VenuesContextFacade venuesContextFacade; // ACL
     private final ProfilesContextFacade profilesContextFacade; // ACL
+    private final ApplicationEventPublisher eventPublisher;
 
     // Constructor simplificado (sin ACLs ni QueryServices por ahora)
     public EncounterCommandServiceImpl(EncounterRepository encounterRepository,
             EncounterStatusRepository encounterStatusRepository, AttendanceStatusRepository attendanceStatusRepository,
             LanguageRepository languageRepository, CEFRLevelRepository cefrLevelRepository,
-            VenuesContextFacade venuesContextFacade, ProfilesContextFacade profilesContextFacade) {
+            VenuesContextFacade venuesContextFacade, ProfilesContextFacade profilesContextFacade, ApplicationEventPublisher eventPublisher) {
         this.encounterRepository = encounterRepository;
         this.encounterStatusRepository = encounterStatusRepository;
         this.attendanceStatusRepository = attendanceStatusRepository;
@@ -60,6 +65,7 @@ public class EncounterCommandServiceImpl implements EncounterCommandService {
         this.cefrLevelRepository = cefrLevelRepository;
         this.venuesContextFacade = venuesContextFacade;
         this.profilesContextFacade = profilesContextFacade;
+        this.eventPublisher = eventPublisher;
     }
 
     @Override
@@ -97,6 +103,14 @@ public class EncounterCommandServiceImpl implements EncounterCommandService {
         encounter.assignTable(new TableId(tableIdValue));
 
         encounterRepository.save(encounter);
+
+        eventPublisher.publishEvent(new EncounterCreatedEvent(
+            encounter.getId(),
+            command.creatorId(),
+            command.venueId(),
+            command.scheduledAt(),
+            command.topic()
+        ));
 
         return Optional.of(encounter);
     }
@@ -156,8 +170,17 @@ public class EncounterCommandServiceImpl implements EncounterCommandService {
         encounter.checkIn(command.learnerId(), checkedInStatus);
 
         encounterRepository.save(encounter);
-        // TODO: Publicar evento LearnerCheckedInEvent para que Loyalty BC otorgue
-        // puntos
+
+        var attendance = encounter.getAttendances().findByLearnerId(command.learnerId())
+            .orElseThrow(() -> new IllegalStateException("Attendance not found after check-in"));
+
+        eventPublisher.publishEvent(new LearnerCheckedInEvent(
+            attendance.getId(), // attendanceId - puedes obtenerlo del encounter si lo necesitas
+            command.encounterId(),
+            command.learnerId(),
+            encounter.getVenueId(),
+            LocalDateTime.now()
+        ));
         return Optional.of(encounter);
     }
 

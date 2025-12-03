@@ -20,4 +20,6 @@ public interface EncounterQueryService {
     Optional<Object> handle(GetAttendanceStatsQuery query); // Devuelve estadísticas
     List<DailyEncounterStat> handle(GetEncounterStatsByVenueQuery query);
     List<Encounter> handle(GetLearnerEncounterHistoryQuery query);
+    List<Encounter> handle(GetEncountersByLearnerIdQuery query);
+    List<Encounter> handle(SearchEncountersSimpleQuery query);
 }

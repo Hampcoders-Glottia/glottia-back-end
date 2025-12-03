@@ -21,6 +21,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @RestController
@@ -160,5 +161,43 @@ public class EncountersController {
 
     return encounter.map(e -> ResponseEntity.ok(toResource(e)))
         .orElse(ResponseEntity.badRequest().build());
+  }
+
+  @Operation(summary = "Obtener todos los encounters de un learner")
+  @GetMapping("/by-learner/{learnerId}")
+  public ResponseEntity<List<EncounterResource>> getEncountersByLearnerId(@PathVariable Long learnerId) {
+      var query = new GetEncountersByLearnerIdQuery(new LearnerId(learnerId));
+      var encounters = encounterQueryService.handle(query);
+
+      var resources = encounters.stream()
+          .map(this::toResource)
+          .collect(Collectors.toList());
+
+      return ResponseEntity.ok(resources);
+  }
+
+  @Operation(summary = "Búsqueda simple de encounters con filtros opcionales")
+  @GetMapping("/search-simple")
+  public ResponseEntity<List<EncounterResource>> searchEncountersSimple(
+      @RequestParam(required = false) Long languageId,
+      @RequestParam(required = false) Long cefrLevelId,
+      @RequestParam(required = false) String topic,
+      @RequestParam(defaultValue = "0") Integer page,
+      @RequestParam(defaultValue = "10") Integer size
+  ) {
+      var query = new SearchEncountersSimpleQuery(
+          Optional.ofNullable(languageId),
+          Optional.ofNullable(cefrLevelId),
+          Optional.ofNullable(topic),
+          page,
+          size
+      );
+      var encounters = encounterQueryService.handle(query);
+
+      var resources = encounters.stream()
+          .map(this::toResource)
+          .collect(Collectors.toList());
+
+      return ResponseEntity.ok(resources);
   }
 }
