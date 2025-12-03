@@ -14,6 +14,16 @@ public interface TokenService {
     String generateToken(String username);
 
     /**
+     * Generate a token with user claims
+     * @param username the username
+     * @param userId the user id
+     * @param role the business role (LEARNER, PARTNER, or UNASSIGNED)
+     * @param roleSpecificId the learner or partner id
+     * @return String the token
+     */
+    String generateToken(String username, Long userId, String role, Long roleSpecificId);
+
+    /**
      * Extract the username from a token
      * @param token the token
      * @return String the username

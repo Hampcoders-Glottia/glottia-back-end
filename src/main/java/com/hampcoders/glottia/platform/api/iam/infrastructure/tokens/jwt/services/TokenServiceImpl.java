@@ -168,4 +168,71 @@ public class TokenServiceImpl implements BearerTokenService {
             return extractTokenFrom(parameter);
         return null;
     }
+
+    /**
+     * This method generates a JWT token with user claims
+     * @param username the username
+     * @param userId the user id
+     * @param role the business role (LEARNER, PARTNER, or UNASSIGNED)
+     * @param roleSpecificId the learner or partner id
+     * @return String the JWT token
+     */
+    @Override
+    public String generateToken(String username, Long userId, String role, Long roleSpecificId) {
+        var issuedAt = new Date();
+        var expiration = DateUtils.addDays(issuedAt, expirationDays);
+        var key = getSigningKey();
+
+        var builder = Jwts.builder()
+                .subject(username)
+                .claim("userId", userId)
+                .claim("role", role)
+                .issuedAt(issuedAt)
+                .expiration(expiration);
+
+        // Add learnerId or partnerId based on role
+        if ("LEARNER".equals(role) && roleSpecificId != null && roleSpecificId > 0) {
+            builder.claim("learnerId", roleSpecificId);
+        } else if ("PARTNER".equals(role) && roleSpecificId != null && roleSpecificId > 0) {
+            builder.claim("partnerId", roleSpecificId);
+        }
+
+        return builder.signWith(key).compact();
+    }
+
+    /**
+     * Extract userId from token
+     * @param token the token
+     * @return Long the user id
+     */
+    public Long getUserIdFromToken(String token) {
+        return extractAllClaims(token).get("userId", Long.class);
+    }
+
+    /**
+     * Extract role from token
+     * @param token the token
+     * @return String the role
+     */
+    public String getRoleFromToken(String token) {
+        return extractAllClaims(token).get("role", String.class);
+    }
+
+    /**
+     * Extract learnerId from token
+     * @param token the token
+     * @return Long the learner id (null if not present)
+     */
+    public Long getLearnerIdFromToken(String token) {
+        return extractAllClaims(token).get("learnerId", Long.class);
+    }
+
+    /**
+     * Extract partnerId from token
+     * @param token the token
+     * @return Long the partner id (null if not present)
+     */
+    public Long getPartnerIdFromToken(String token) {
+        return extractAllClaims(token).get("partnerId", Long.class);
+    }
 }

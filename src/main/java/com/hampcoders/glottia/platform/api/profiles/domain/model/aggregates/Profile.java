@@ -56,6 +56,9 @@ public class Profile extends AuditableAbstractAggregateRoot<Profile> {
     @JoinColumn(name = "partner_id")
     private Partner partner;
 
+    @Column(name = "user_id")
+    private Long userId;
+
     // --- Constructors ---
 
     public Profile() {
@@ -68,7 +71,16 @@ public class Profile extends AuditableAbstractAggregateRoot<Profile> {
         this.age = age;
         this.email = email;
         this.businessRole = businessRole;
+    }
 
+    public Profile(String firstName, String lastName, int age, String email, BusinessRole businessRole, Long userId) {
+        this();
+        this.firstName = firstName;
+        this.lastName = lastName;
+        this.age = age;
+        this.email = email;
+        this.businessRole = businessRole;
+        this.userId = userId;
     }
 
     public Profile(CreateProfileCommand command) {
@@ -202,4 +214,7 @@ public class Profile extends AuditableAbstractAggregateRoot<Profile> {
         return Optional.empty();
     }
 
+    public void linkToUser(Long userId) {
+        this.userId = userId;
+    }
 }

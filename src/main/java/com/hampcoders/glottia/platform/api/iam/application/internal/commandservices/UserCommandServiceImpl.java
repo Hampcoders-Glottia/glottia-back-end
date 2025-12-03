@@ -7,6 +7,8 @@ import com.hampcoders.glottia.platform.api.iam.domain.model.commands.SignInComma
 import com.hampcoders.glottia.platform.api.iam.domain.model.commands.SignUpCommand;
 import com.hampcoders.glottia.platform.api.iam.domain.services.UserCommandService;
 import com.hampcoders.glottia.platform.api.iam.infrastructure.persistence.jpa.repositories.UserRepository;
+import com.hampcoders.glottia.platform.api.profiles.interfaces.acl.ProfilesContextFacade;
+
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.springframework.stereotype.Service;
 
@@ -25,14 +27,15 @@ public class UserCommandServiceImpl implements UserCommandService {
     private final UserRepository userRepository;
     private final HashingService hashingService;
     private final TokenService tokenService;
+    private final ProfilesContextFacade profilesContextFacade;
 
 
     public UserCommandServiceImpl(UserRepository userRepository, HashingService hashingService,
-                                  TokenService tokenService) {
-
+                                  TokenService tokenService, ProfilesContextFacade profilesContextFacade) {
         this.userRepository = userRepository;
         this.hashingService = hashingService;
         this.tokenService = tokenService;
+        this.profilesContextFacade = profilesContextFacade;
     }
 
     /**
@@ -47,38 +50,66 @@ public class UserCommandServiceImpl implements UserCommandService {
     @Override
     public Optional<ImmutablePair<User, String>> handle(SignInCommand command) {
         var user = userRepository.findByUsername(command.username());
-        if (user.isEmpty())
-            throw new RuntimeException("User not found");
-        if (!hashingService.matches(command.password(), user.get().getPassword()))
-            throw new RuntimeException("Invalid password");
 
-        var token = tokenService.generateToken(user.get().getUsername());
-        return Optional.of(ImmutablePair.of(user.get(), token));
+        if (user.isEmpty()) {
+            throw new RuntimeException("User not found");
+        }
+
+        if (!hashingService.matches(command.password(), user.get().getPassword())) {
+            throw new RuntimeException("Invalid password");
+        }
+
+        var authenticatedUser = user.get();
+        
+        // Determinar rol y obtener IDs específicos
+        String role = determineUserRole(authenticatedUser.getId());
+        Long roleSpecificId = getRoleSpecificId(authenticatedUser.getId(), role);
+
+        // Generar token CON los claims adicionales
+        var token = tokenService.generateToken(
+                authenticatedUser.getUsername(),
+                authenticatedUser.getId(),
+                role,
+                roleSpecificId
+        );
+
+        return Optional.of(ImmutablePair.of(authenticatedUser, token));
+    }
+
+    @Override
+    public Optional<User> handle(SignUpCommand command) {
+        if (userRepository.existsByUsername(command.username())) {
+            throw new RuntimeException("Username already exists");
+        }
+
+        var hashedPassword = hashingService.encode(command.password());
+        var user = new User(command.username(), hashedPassword);
+        userRepository.save(user);
+
+        return Optional.of(user);
     }
 
     /**
-     * Handle the sign-up command
-     * <p>
-     *     This method handles the {@link SignUpCommand} command and returns the user.
-     * </p>
-     * @param command the sign-up command containing the username and password
-     * @return the created user
+     * Determines the user's business role (LEARNER, PARTNER, or UNASSIGNED)
      */
-    @Override
-    public Optional<User> handle(SignUpCommand command) {
-        try {
-
-            if (command.username() == null || command.password() == null)
-                throw new RuntimeException("Username and password cannot be null");
-            if (userRepository.existsByUsername(command.username()))
-                throw new RuntimeException("Username already exists");
-
-            var user = new User(command.username(), hashingService.encode(command.password()));
-            userRepository.save(user);
-            return userRepository.findByUsername(command.username());
-        } catch (Exception e) {
-            throw new RuntimeException("An error occurred while creating user", e);
+    private String determineUserRole(Long userId) {
+        if (profilesContextFacade.isUserLearner(userId)) {
+            return "LEARNER";
+        } else if (profilesContextFacade.isUserPartner(userId)) {
+            return "PARTNER";
         }
+        return "UNASSIGNED";
+    }
 
+    /**
+     * Gets the specific ID (learnerId or partnerId) based on the role
+     */
+    private Long getRoleSpecificId(Long userId, String role) {
+        if ("LEARNER".equals(role)) {
+            return profilesContextFacade.fetchLearnerIdByUserId(userId);
+        } else if ("PARTNER".equals(role)) {
+            return profilesContextFacade.fetchPartnerIdByUserId(userId);
+        }
+        return 0L;
     }
 }
