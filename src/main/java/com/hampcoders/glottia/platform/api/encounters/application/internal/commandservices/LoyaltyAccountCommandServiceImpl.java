@@ -38,7 +38,7 @@ public class LoyaltyAccountCommandServiceImpl implements LoyaltyAccountCommandSe
 
     @Override
     public Optional<LoyaltyAccount> handle(AwardPointsCommand command) {
-        var account = loyaltyAccountRepository.findByLearnerId(command.learnerId())
+        /*var account = loyaltyAccountRepository.findByLearnerId(command.learnerId())
                 .orElseThrow(() -> new IllegalArgumentException("Loyalty account not found for this learner."));
 
         // Usamos los métodos específicos del agregado
@@ -56,12 +56,16 @@ public class LoyaltyAccountCommandServiceImpl implements LoyaltyAccountCommandSe
         }
 
         loyaltyAccountRepository.save(account);
-        return Optional.of(account);
+        return Optional.of(account);*/
+
+        throw new UnsupportedOperationException(
+            "Use LoyaltyPointsEventHandler for penalizing. " +
+            "Penalties are applied automatically via domain events.");
     }
 
     @Override
     public Optional<LoyaltyAccount> handle(PenalizeCommand command) {
-        var account = loyaltyAccountRepository.findByLearnerId(command.learnerId())
+        /*var account = loyaltyAccountRepository.findByLearnerId(command.learnerId())
                 .orElseThrow(() -> new IllegalArgumentException("Loyalty account not found for this learner."));
 
         if ("NO_SHOW".equals(command.reason())) {
@@ -77,6 +81,10 @@ public class LoyaltyAccountCommandServiceImpl implements LoyaltyAccountCommandSe
         }
 
         loyaltyAccountRepository.save(account);
-        return Optional.of(account);
+        return Optional.of(account);*/
+
+        throw new UnsupportedOperationException(
+            "Use LoyaltyPointsEventHandler for penalizing. " +
+            "Penalties are applied automatically via domain events.");
     }
 }

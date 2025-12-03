@@ -114,4 +114,20 @@ public interface EncounterRepository extends JpaRepository<Encounter, Long> {
         LocalDate getEncounterDate();
         Long getEncounterCount();
     }
+    // NUEVO: Encuentros FUTUROS donde el learner tiene asistencia activa
+    @Query("SELECT DISTINCT e FROM Encounter e " +
+        "JOIN e.attendances.items a " +
+        "WHERE a.learnerId = :learnerId " +
+        "AND (a.status.name = 'RESERVED' OR a.status.name = 'CHECKED_IN') " +
+        "AND e.scheduledAt >= CURRENT_TIMESTAMP " +
+        "ORDER BY e.scheduledAt ASC")
+    List<Encounter> findUpcomingByLearnerId(@Param("learnerId") LearnerId learnerId);
+
+    // NUEVO: Historial de Encuentros PASADOS (Completados, cancelados, etc.)
+    @Query("SELECT DISTINCT e FROM Encounter e " +
+        "JOIN e.attendances.items a " +
+        "WHERE a.learnerId = :learnerId " +
+        "AND e.scheduledAt < CURRENT_TIMESTAMP " +
+        "ORDER BY e.scheduledAt DESC")
+    List<Encounter> findHistoryByLearnerId(@Param("learnerId") LearnerId learnerId);
 }

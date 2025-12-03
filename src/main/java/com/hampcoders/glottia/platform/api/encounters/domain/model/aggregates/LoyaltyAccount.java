@@ -1,7 +1,15 @@
 package com.hampcoders.glottia.platform.api.encounters.domain.model.aggregates;
 
 import com.hampcoders.glottia.platform.api.shared.domain.model.aggregates.AuditableAbstractAggregateRoot;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import com.hampcoders.glottia.platform.api.encounters.domain.model.entities.LoyaltyTransaction;
+import com.hampcoders.glottia.platform.api.encounters.domain.model.entities.LoyaltyTransaction.TransactionType;
 import com.hampcoders.glottia.platform.api.encounters.domain.model.valueobjects.LearnerId;
+import com.hampcoders.glottia.platform.api.encounters.domain.model.valueobjects.VenueId;
+
 import jakarta.persistence.*;
 import lombok.Getter;
 
@@ -26,46 +34,63 @@ public class LoyaltyAccount extends AuditableAbstractAggregateRoot<LoyaltyAccoun
     private Integer noShowCount = 0;
     // Podríamos agregar una lista de Badges si se manejan como entidades/VOs aquí
 
+    @OneToMany(mappedBy = "loyaltyAccount", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OrderBy("createdAt DESC")
+    private List<LoyaltyTransaction> transactions = new ArrayList<>();
+
+
     protected LoyaltyAccount() {}
 
     public LoyaltyAccount(LearnerId learnerId) {
         this.learnerId = learnerId;
+
+        addTransaction(TransactionType.WELCOME_BONUS, 300, "Bono de bienvenida", null, null, null);
     }
 
-    public void awardPointsForCreation() {
-        this.points += 5; // Valor fijo o configurable
+    public void awardPointsForCreation(Long encounterId, VenueId venueId, String venueName) {
+        int pointsToAdd = 5;
+        this.points += pointsToAdd;
         this.encountersCreated++;
-        // Emitir evento PointsAwardedEvent
+        addTransaction(TransactionType.CREATION, pointsToAdd, 
+            "Reserva completada: " + venueName, encounterId, venueId, venueName);
     }
 
-    public void awardPointsForAttendance(int pointsToAdd) {
+    public void awardPointsForAttendance(int pointsToAdd, Long encounterId, VenueId venueId, String venueName) {
         if (pointsToAdd <= 0) throw new IllegalArgumentException("Points to add must be positive");
         this.points += pointsToAdd;
         this.encountersAttended++;
-        // Emitir evento PointsAwardedEvent
-        // Verificar si se desbloquea un badge
-         checkAndEmitBadgeUnlock("FLUENT_FRIEND", 100);
+        addTransaction(TransactionType.ATTENDANCE, pointsToAdd, 
+            "Check-in: " + venueName, encounterId, venueId, venueName);
+        checkAndEmitBadgeUnlock("FLUENT_FRIEND", 100);
     }
 
-    public void penalizeNoShow(int penalty) {
+    public void penalizeNoShow(int penalty, Long encounterId, VenueId venueId, String venueName) {
         if (penalty <= 0) throw new IllegalArgumentException("Penalty must be positive");
         this.points -= penalty;
         this.noShowCount++;
-        // Emitir evento PointsPenalizedEvent
+        addTransaction(TransactionType.NO_SHOW, -penalty, 
+            "No-show: " + venueName, encounterId, venueId, venueName);
     }
 
-     public void penalizeLateCancellation(int penalty) {
-         if (penalty <= 0) throw new IllegalArgumentException("Penalty must be positive");
-         this.points -= penalty;
-         // Emitir evento PointsPenalizedEvent
-     }
+    public void penalizeLateCancellation(int penalty, Long encounterId, VenueId venueId, String venueName) {
+        if (penalty <= 0) throw new IllegalArgumentException("Penalty must be positive");
+        this.points -= penalty;
+        addTransaction(TransactionType.LATE_CANCEL, -penalty, 
+            "Cancelación tardía: " + venueName, encounterId, venueId, venueName);
+    }
+
+    private void addTransaction(TransactionType type, Integer points, String description, 
+                                 Long encounterId, VenueId venueId, String venueName) {
+        var transaction = new LoyaltyTransaction(this, type, points, description, encounterId, venueId, venueName);
+        this.transactions.add(transaction);
+    }
 
     public boolean canParticipate() {
         // Regla: Un Learner con puntos < 0 no puede participar
         return this.points >= 0;
     }
 
-     private void checkAndEmitBadgeUnlock(String badgeName, int threshold) {
+    private void checkAndEmitBadgeUnlock(String badgeName, int threshold) {
          // Lógica simplificada, podrías tener una lista de badges y sus umbrales
          if (this.points >= threshold && !hasUnlockedBadge(badgeName)) {
               // Marcar badge como desbloqueado (si se persiste)

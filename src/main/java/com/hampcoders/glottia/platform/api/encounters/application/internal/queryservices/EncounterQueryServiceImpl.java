@@ -17,6 +17,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 /** 
  * Implements the EncounterQueryService to handle queries related to encounters.
@@ -72,10 +73,7 @@ public class EncounterQueryServiceImpl implements EncounterQueryService {
 
     @Override
     public List<Encounter> handle(GetUpcomingEncountersForLearnerQuery query) {
-        // Esta query es compleja y requiere una implementación personalizada en el repositorio
-        // (Ver `findConflictingEncounters` como ejemplo de query con JOIN)
-        // Por simplicidad, simulamos:
-        return List.of(); // Debería implementarse en EncounterRepository
+        return encounterRepository.findUpcomingByLearnerId(query.learnerId());
     }
 
     /*     @Override
@@ -169,6 +167,43 @@ public class EncounterQueryServiceImpl implements EncounterQueryService {
         return result;
     }
 
+    @Override
+    public List<Encounter> handle(GetEncountersByLearnerIdQuery query) {
+        return encounterRepository.findAll().stream()
+            .filter(encounter -> encounter.getAttendances()
+                .hasLearner(query.learnerId()))
+            .collect(Collectors.toList());
+    }
+
+    @Override
+    public List<Encounter> handle(SearchEncountersSimpleQuery query) {
+        var allEncounters = encounterRepository.findAll();
+        
+        return allEncounters.stream()
+            .filter(encounter -> {
+                boolean matches = true;
+                
+                if (query.languageId().isPresent()) {
+                    matches = matches && encounter.getLanguage().getId()
+                        .equals(query.languageId().get());
+                }
+                
+                if (query.cefrLevelId().isPresent()) {
+                    matches = matches && encounter.getLevel().getId()
+                        .equals(query.cefrLevelId().get());
+                }
+                
+                if (query.topic().isPresent()) {
+                    matches = matches && encounter.getTopic()
+                        .toLowerCase().contains(query.topic().get().toLowerCase());
+                }
+                
+                return matches;
+            })
+            .skip((long) query.page() * query.size())
+            .limit(query.size())
+            .collect(Collectors.toList());
+    }
 
     private LocalDate convertToLocalDate(Object dateObject) {
         if (dateObject == null) {
@@ -186,5 +221,9 @@ public class EncounterQueryServiceImpl implements EncounterQueryService {
         throw new IllegalArgumentException(
             "Unsupported date type: " + dateObject.getClass().getName()
         );
+    }
+    // Nueva implementación para historial (Asegúrate de agregar el método a la interfaz EncounterQueryService primero)
+    public List<Encounter> handle(GetLearnerEncounterHistoryQuery query) {
+        return encounterRepository.findHistoryByLearnerId(query.learnerId());
     }
 }

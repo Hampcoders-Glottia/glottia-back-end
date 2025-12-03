@@ -3,15 +3,21 @@ package com.hampcoders.glottia.platform.api.encounters.interfaces.rest;
 import com.hampcoders.glottia.platform.api.encounters.domain.model.aggregates.LoyaltyAccount;
 import com.hampcoders.glottia.platform.api.encounters.domain.model.queries.GetLeaderboardQuery;
 import com.hampcoders.glottia.platform.api.encounters.domain.model.queries.GetLoyaltyAccountByLearnerQuery;
+import com.hampcoders.glottia.platform.api.encounters.domain.model.queries.GetPointsHistoryQuery;
 import com.hampcoders.glottia.platform.api.encounters.domain.model.queries.GetUnlockedBadgesQuery;
 import com.hampcoders.glottia.platform.api.encounters.domain.model.valueobjects.LearnerId;
 import com.hampcoders.glottia.platform.api.encounters.domain.services.LoyaltyAccountQueryService;
 import com.hampcoders.glottia.platform.api.encounters.interfaces.rest.resources.LoyaltyAccountResource;
 import com.hampcoders.glottia.platform.api.encounters.interfaces.rest.resources.LoyaltyLeaderboardResource;
+import com.hampcoders.glottia.platform.api.encounters.interfaces.rest.resources.LoyaltyTransactionResource;
 import com.hampcoders.glottia.platform.api.encounters.interfaces.rest.transform.LoyaltyAccountResourceFromEntityAssembler;
+import com.hampcoders.glottia.platform.api.encounters.interfaces.rest.transform.LoyaltyTransactionResourceFromEntityAssembler;
+
 // import com.hampcoders.glottia.platform.api.profiles.interfaces.acl.ProfilesContextFacade; // Necesario para nombres
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+
+import org.springframework.data.domain.Page;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -82,5 +88,20 @@ public class LoyaltyController {
 
         // La lógica de badges no está implementada, devuelve vacío
         return ResponseEntity.ok(badges);
+    }
+
+    @Operation(summary = "Obtener historial de puntos de un learner")
+    @GetMapping("/learners/{learnerId}/points-history")
+    public ResponseEntity<Page<LoyaltyTransactionResource>> getPointsHistory(
+        @PathVariable Long learnerId,
+        @RequestParam(defaultValue = "0") Integer page,
+        @RequestParam(defaultValue = "10") Integer size
+    ) {
+        var query = new GetPointsHistoryQuery(new LearnerId(learnerId), page, size);
+        var transactions = loyaltyAccountQueryService.handle(query);
+        
+        var resources = transactions.map(LoyaltyTransactionResourceFromEntityAssembler::toResourceFromEntity);
+        
+        return ResponseEntity.ok(resources);
     }
 }

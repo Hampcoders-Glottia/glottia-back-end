@@ -25,4 +25,26 @@ public interface BearerTokenService extends TokenService {
      * @see Authentication
      */
     String generateToken(Authentication authentication);
+
+    String generateToken(String username, Long userId, String role, Long roleSpecificId);
+
+    /**
+     * Extract userId from token
+     */
+    Long getUserIdFromToken(String token);
+
+    /**
+     * Extract role from token
+     */
+    String getRoleFromToken(String token);
+
+    /**
+     * Extract learnerId from token
+     */
+    Long getLearnerIdFromToken(String token);
+
+    /**
+     * Extract partnerId from token
+     */
+    Long getPartnerIdFromToken(String token);
 }

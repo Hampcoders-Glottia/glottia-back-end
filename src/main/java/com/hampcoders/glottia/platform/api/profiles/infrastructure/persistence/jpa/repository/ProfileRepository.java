@@ -34,4 +34,6 @@ public interface ProfileRepository extends JpaRepository<Profile, Long> {
     Optional<Partner> findPartnerByProfileId(@Param("profileId") Long profileId);
 
     boolean existsByEmailAndIdIsNot(String email, Long profileId);
+
+    Optional<Profile> findByUserId(Long userId);
 }

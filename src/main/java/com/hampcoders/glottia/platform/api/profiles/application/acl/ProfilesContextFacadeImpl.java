@@ -10,6 +10,7 @@ import com.hampcoders.glottia.platform.api.profiles.domain.model.queries.GetLear
 import com.hampcoders.glottia.platform.api.profiles.domain.model.queries.GetPartnerByIdQuery;
 import com.hampcoders.glottia.platform.api.profiles.domain.model.queries.GetProfileByIdQuery;
 import com.hampcoders.glottia.platform.api.profiles.domain.services.ProfileQueryService;
+import com.hampcoders.glottia.platform.api.profiles.infrastructure.persistence.jpa.repository.ProfileRepository;
 import com.hampcoders.glottia.platform.api.profiles.interfaces.acl.ProfilesContextFacade;
 
 import lombok.AllArgsConstructor;
@@ -21,6 +22,7 @@ import lombok.AllArgsConstructor;
 @AllArgsConstructor
 public class ProfilesContextFacadeImpl implements ProfilesContextFacade {
     private final ProfileQueryService profileQueryService;
+    private final ProfileRepository profileRepository;
 
 
     @Override
@@ -171,5 +173,42 @@ public class ProfilesContextFacadeImpl implements ProfilesContextFacade {
         } catch (Exception e) {
             return "";
         }
+    }
+
+
+    @Override
+    public Long fetchProfileIdByUserId(Long userId) {
+        var profile = profileRepository.findByUserId(userId);
+        return profile.map(Profile::getId).orElse(0L);
+    }
+
+    @Override
+    public Long fetchLearnerIdByUserId(Long userId) {
+        var profile = profileRepository.findByUserId(userId);
+        if (profile.isPresent() && profile.get().isLearner()) {
+            return profile.get().getLearner().getId();
+        }
+        return 0L;
+    }
+
+    @Override
+    public Long fetchPartnerIdByUserId(Long userId) {
+        var profile = profileRepository.findByUserId(userId);
+        if (profile.isPresent() && profile.get().isPartner()) {
+            return profile.get().getPartner().getId();
+        }
+        return 0L;
+    }
+
+    @Override
+    public boolean isUserLearner(Long userId) {
+        var profile = profileRepository.findByUserId(userId);
+        return profile.map(Profile::isLearner).orElse(false);
+    }
+
+    @Override
+    public boolean isUserPartner(Long userId) {
+        var profile = profileRepository.findByUserId(userId);
+        return profile.map(Profile::isPartner).orElse(false);
     }
 }
